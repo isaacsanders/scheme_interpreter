@@ -1,0 +1,250 @@
+(load "chez-init.ss")
+(load "lexical-address.ss")
+
+(define-datatype formals formals?
+                 (unary
+                   (param symbol?))
+                 (param-list
+                   (params (list-of symbol?)))
+                 (list-with-var-args
+                   (params (list-of symbol?))
+                   (var-args symbol?)))
+
+(define-datatype constant constant?
+                 (boolean-literal
+                   (value boolean?))
+                 (number-literal
+                   (value number?))
+                 (character-literal
+                   (value char?))
+                 (string-literal
+                   (value string?)))
+
+(define quoteable?
+  (lambda (val) #t))
+
+(define-datatype expression expression?
+                 (lexical-addressed-variable
+                   (depth number?)
+                   (position number?))
+                 (free-variable
+                   (name symbol?))
+                 (constant-exp
+                   (value constant?))
+                 (quote-exp
+                   (datum quoteable?))
+                 (lambda-exp
+                   (formals formals?)
+                   (bodies (list-of expression?)))
+                 (begin-exp
+                   (bodies (list-of expression?)))
+                 (app-exp
+                   (operator expression?)
+                   (operands (list-of expression?)))
+                 (if-exp
+                   (condition expression?)
+                   (if-true expression?))
+                 (if-else-exp
+                   (condition expression?)
+                   (if-true expression?)
+                   (if-false expression?))
+                 (vector-exp
+                   (datum (list-of expression?))))
+
+(define report-parse-error
+  (lambda (msg datum)
+    (eopl:error 'parse-expression msg datum)))
+
+(define list-of
+  (lambda (pred)
+    (letrec
+      ((L (lambda (lat)
+            (and (list? lat)
+                 (cond
+                   ((null? lat) #t)
+                   (else (and (pred (car lat)) (L (cdr lat)))))))))
+      L)))
+
+(define binding?
+  (lambda (datum)
+    (and (list? datum)
+         (eq? (length datum) 2)
+         (symbol? (car datum)))))
+
+(define parse-lambda
+  (lambda (datum)
+    (define split-param-list-and-var-args
+      (lambda (param-list)
+        (letrec
+          ((S (lambda (old-list split-list)
+                (cond
+                  ((not (pair? (cdr param-list))) (cons (append split-list
+                                                                (list (car param-list)))
+                                                        (cdr param-list)))
+                  (else (S (cdr old-list) (cons (car old-list) split-list)))))))
+          (S param-list '()))))
+    (cond
+      ((null? (cddr datum)) (report-parse-error "Invalid lambda syntax ~s" datum))
+
+      ((symbol? (cadr datum))
+       (lambda-exp (unary (cadr datum))
+                   (map parse-expression (caddr datum))))
+
+      ((and (not (list? (cadr datum)))
+            (pair? (cadr datum))) (let* ((params (split-param-list-and-var-args (cadr datum)))
+                                         (param-list (car params))
+                                         (var-args (cdr params)))
+            (lambda-exp (list-with-var-args param-list var-args)
+                        (map parse-expression (caddr datum)))))
+
+       (((list-of symbol?) (cadr datum))
+        (lambda-exp (param-list (cadr datum))
+                    (map parse-expression (caddr datum))))
+       (else (eopl:error 'parse-expression "Invalid parameter syntax ~s" datum)))))
+
+(define parse-if
+  (lambda (datum)
+    (cond
+      ((null? (cdr datum))
+       (eopl:error 'parse-expression
+                   "No condition for if-exp ~s" datum))
+      ((null? (cddr datum))
+       (eopl:error 'parse-expression
+                   "No true-case for if-exp ~s" datum))
+      ((null? (cdddr datum))
+       (if-exp (parse-expression (cadr datum))
+               (parse-expression (caddr datum))))
+      ((null? (cddddr datum))
+       (if-else-exp (parse-expression (cadr datum))
+                    (parse-expression (caddr datum))
+                    (parse-expression (cadddr datum))))
+      (else (eopl:error 'parse-expression
+                        "Invalid if-exp ~s" datum)))))
+
+; (define parse-binding
+;   (lambda (binding)
+;     (cond
+;       ((binding? binding) (list (car binding) (parse-expression (cadr binding))))
+;       (else (eopl:error 'parse-expression
+;                         "Invalid binding ~s" binding)))))
+; 
+; (define unparse-binding
+;   (lambda (binding)
+;     (list (car binding) (unparse-expression (cadr binding)))))
+; 
+; (define parse-set
+;   (lambda (datum)
+;     (cond
+;       ((null? (cddr datum))
+;        (eopl:error 'parse-expression
+;                    "No value to set ~s to" (cadr datum)))
+;       ((not (null? (cdddr datum)))
+;        (eopl:error 'parse-expression
+;                    "Too many bodies in ~s" datum))
+;       (else (set!-exp (cadr datum) (parse-expression (caddr datum)))))))
+; 
+; (define parse-bindings
+;   (lambda (bindings)
+;     (map parse-binding bindings)))
+; 
+; (define parse-letrec
+;   (lambda (datum)
+;     (cond
+;       ((or (null? (cddr datum))
+;            (not (list? (cadr datum))))
+;        (eopl:error 'parse-expression
+;                    "No body for letrec-exp ~s" datum))
+;       (else (letrec-exp (parse-bindings (cadr datum))
+;                         (map parse-expression (cddr datum)))))))
+; 
+; (define parse-let
+;   (lambda (datum)
+;     (cond
+;       ((null? (cddr datum)) (eopl:error 'parse-expression
+;                                         "No body in ~s" datum))
+;       (((list-of binding?) (cadr datum))
+;        (let-exp (parse-bindings (cadr datum))
+;                 (map parse-expression (cddr datum))))
+;       ((symbol? (cadr datum))
+;        (named-let-exp (cadr datum)
+;                       (parse-bindings (cadr datum))
+;                       (map parse-expression (cddr datum))))
+;       (else (eopl:error 'parse-expression
+;                         "Invalid let syntax ~s" datum)))))
+; 
+; (define parse-let*
+;   (lambda (datum)
+;     (cond
+;       ((null? (cddr datum)) (eopl:error 'parse-expression
+;                                         "No body in ~s" datum))
+;       ((list? (cadr datum))
+;        (let-star-exp (parse-bindings (cadr datum))
+;                 (map parse-expression (cddr datum))))
+;       (else (eopl:error 'parse-expression
+;                         "Invalid let syntax ~s" datum)))))
+
+(define parse-expression
+  (lambda (datum)
+    (cond [(symbol? datum) (free-variable datum)]
+          [(boolean? datum) (constant-exp (boolean-literal datum))]
+          [(number? datum) (constant-exp (number-literal datum))]
+          [(string? datum) (constant-exp (string-literal datum))]
+          [(vector? datum) (vector-exp (map parse-expression (vector->list datum)))]
+          [(list? datum)
+           (cond
+             [(eq? (cadr datum) 'free) (free-variable (car datum))]
+             [(eq? (car datum) ':) (lexical-addressed-variable (cadr datum) (caddr datum))]
+             [(eq? (car datum) 'quote) (quote-exp (cdr datum))]
+             [(eq? (car datum) 'lambda) (parse-lambda datum)]
+             [(eq? (car datum) 'if)     (parse-if datum)]
+             ; [(eq? (car datum) 'letrec) (parse-letrec datum)]
+             ; [(eq? (car datum) 'let)    (parse-let datum)]
+             ; [(eq? (car datum) 'let*)   (parse-let* datum)]
+             ; [(eq? (car datum) 'set!)   (parse-set datum)]
+             [(eq? (car datum) 'begin) (begin-exp (map parse-expression (cdr datum)))]
+             [else (app-exp (parse-expression (car datum))
+                            (map parse-expression (cdr datum)))])]
+          [else (eopl:error 'parse-expression
+                            "Invalid concrete syntac ~s" datum)])))
+
+(define merge-param-list-and-optional
+  (lambda (params optional-param)
+    (cond
+      ((null? (cdr params)) (cons (car params) optional-param))
+      (else (cons (car params)
+                  (merge-param-list-and-optional (cdr params)
+                                                 optional-param))))))
+
+(define unparse-formals
+  (lambda (frmls)
+    (cases formals frmls
+           [unary (param) param]
+           [param-list (params) params]
+           [list-with-optional-param (params optional-param)
+                                     (merge-param-list-and-optional params optional-param)])))
+
+(define unparse-expression
+  (lambda (expr)
+    (cases expression expr
+           [free-variable (id) id]
+           [lexical-addressed-variable (depth position) '(: depth position)]
+           [constant-exp (val) val]
+           [lambda-exp (formals bodies)
+                       (append (list 'lambda (unparse-formals formals))
+                               (map unparse-expression bodies))]
+           [app-exp (operator operands)
+                    (cons (unparse-expression operator)
+                          (map unparse-expression operands))]
+           [if-exp (condition if-true)
+                   (list 'if
+                         (unparse-expression condition)
+                         (unparse-expression if-true))]
+           [if-else-exp (condition if-true if-false)
+                        (list 'if
+                              (unparse-expression condition)
+                              (unparse-expression if-true)
+                              (unparse-expression if-false))]
+           [set!-exp (name value)
+                     (list 'set!
+                           name
+                           (unparse-expression value))])))
