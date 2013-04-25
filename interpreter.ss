@@ -1,9 +1,10 @@
 (load "env.ss")
 (load "parser.ss")
+(load "syntax-expand.ss")
 
 (define eval-one-exp
   (lambda (exp)
-    (let* ([parse-tree (lexical-address (parse-expression exp))]
+    (let* ([parse-tree (lexical-address (syntax-expand (parse-expression exp)))]
            [initial-environment (lexically-addressed-environment (list))]
            [result (eval-expression parse-tree initial-environment)])
       result)))
@@ -35,6 +36,7 @@
                                  ((null? (cdr bodies)) (eval-expression (car bodies) env))
                                  (else (begin (eval-expression (car bodies) env)
                                               (eval-expression (begin-exp (cdr bodies)) env))))]
+           [let-exp (syms vals bodies) (display "Something went wrong.")]
            [app-exp (operator operands)
                     (let ([procedure (eval-expression operator env)]
                           [args (map (eval-expression-env env) operands)])

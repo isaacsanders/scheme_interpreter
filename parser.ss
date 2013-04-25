@@ -43,6 +43,10 @@
                  (app-exp
                    (operator expression?)
                    (operands (list-of expression?)))
+                 (let-exp
+                   (syms (list-of symbol?))
+                   (vals (list-of expression?))
+                   (bodies (list-of expression?)))
                  (if-exp
                    (condition expression?)
                    (if-true expression?))
@@ -102,17 +106,15 @@
        (((list-of symbol?) (cadr datum))
         (lambda-exp (param-list (cadr datum))
                     (map parse-expression (cddr datum))))
-       (else (eopl:error 'parse-expression "Invalid parameter syntax ~s" datum)))))
+       (else (report-parse-error "Invalid parameter syntax ~s" datum)))))
 
 (define parse-if
   (lambda (datum)
     (cond
       ((null? (cdr datum))
-       (eopl:error 'parse-expression
-                   "No condition for if-exp ~s" datum))
+       (report-parse-error "No condition for if-exp ~s" datum))
       ((null? (cddr datum))
-       (eopl:error 'parse-expression
-                   "No true-case for if-exp ~s" datum))
+       (report-parse-error "No true-case for if-exp ~s" datum))
       ((null? (cdddr datum))
        (if-exp (parse-expression (cadr datum))
                (parse-expression (caddr datum))))
@@ -120,8 +122,7 @@
        (if-else-exp (parse-expression (cadr datum))
                     (parse-expression (caddr datum))
                     (parse-expression (cadddr datum))))
-      (else (eopl:error 'parse-expression
-                        "Invalid if-exp ~s" datum)))))
+      (else (report-parse-error "Invalid if-exp ~s" datum)))))
 
 ; (define parse-binding
 ;   (lambda (binding)
@@ -195,6 +196,10 @@
           [(list? datum)
            (cond
              [(eq? (cadr datum) 'free) (free-variable (car datum))]
+             [(eq? (car datum) 'let) (let-exp (map car (cadr datum))
+                                              (map (lambda (binding)
+                                                     (parse-expression (cadr binding))) (cadr datum))
+                                              (map parse-expression (cddr datum)))]
              [(eq? (car datum) ':) (lexical-addressed-variable (cadr datum) (caddr datum))]
              [(eq? (car datum) 'quote) (quote-exp (cdr datum))]
              [(eq? (car datum) 'lambda) (parse-lambda datum)]

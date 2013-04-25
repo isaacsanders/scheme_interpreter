@@ -16,9 +16,16 @@
 
 (load "interpreter.ss")
 
+(define (rl) (load "main.ss"))
+
 (define (rep)
   (begin
     (display "--> ")
-    (write (eval-expression (lexical-address (parse-expression (read))) (lexically-addressed-environment '())))
+    (write (eval-expression
+             (lexical-address
+               (syntax-expand
+                 (parse-expression
+                   (read))))
+             (lexically-addressed-environment '())))
     (newline)
     (rep)))
