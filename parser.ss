@@ -29,6 +29,8 @@
                    (position number?))
                  (free-variable
                    (name symbol?))
+                 (variable
+                   (name symbol?))
                  (constant-exp
                    (value constant?))
                  (quote-exp
@@ -88,18 +90,18 @@
 
       ((symbol? (cadr datum))
        (lambda-exp (unary (cadr datum))
-                   (map parse-expression (caddr datum))))
+                   (map parse-expression (cddr datum))))
 
       ((and (not (list? (cadr datum)))
             (pair? (cadr datum))) (let* ((params (split-param-list-and-var-args (cadr datum)))
                                          (param-list (car params))
                                          (var-args (cdr params)))
             (lambda-exp (list-with-var-args param-list var-args)
-                        (map parse-expression (caddr datum)))))
+                        (map parse-expression (cddr datum)))))
 
        (((list-of symbol?) (cadr datum))
         (lambda-exp (param-list (cadr datum))
-                    (map parse-expression (caddr datum))))
+                    (map parse-expression (cddr datum))))
        (else (eopl:error 'parse-expression "Invalid parameter syntax ~s" datum)))))
 
 (define parse-if
@@ -185,7 +187,7 @@
 
 (define parse-expression
   (lambda (datum)
-    (cond [(symbol? datum) (free-variable datum)]
+    (cond [(symbol? datum) (variable datum)]
           [(boolean? datum) (constant-exp (boolean-literal datum))]
           [(number? datum) (constant-exp (number-literal datum))]
           [(string? datum) (constant-exp (string-literal datum))]
@@ -206,45 +208,3 @@
                             (map parse-expression (cdr datum)))])]
           [else (eopl:error 'parse-expression
                             "Invalid concrete syntac ~s" datum)])))
-
-(define merge-param-list-and-optional
-  (lambda (params optional-param)
-    (cond
-      ((null? (cdr params)) (cons (car params) optional-param))
-      (else (cons (car params)
-                  (merge-param-list-and-optional (cdr params)
-                                                 optional-param))))))
-
-(define unparse-formals
-  (lambda (frmls)
-    (cases formals frmls
-           [unary (param) param]
-           [param-list (params) params]
-           [list-with-optional-param (params optional-param)
-                                     (merge-param-list-and-optional params optional-param)])))
-
-(define unparse-expression
-  (lambda (expr)
-    (cases expression expr
-           [free-variable (id) id]
-           [lexical-addressed-variable (depth position) '(: depth position)]
-           [constant-exp (val) val]
-           [lambda-exp (formals bodies)
-                       (append (list 'lambda (unparse-formals formals))
-                               (map unparse-expression bodies))]
-           [app-exp (operator operands)
-                    (cons (unparse-expression operator)
-                          (map unparse-expression operands))]
-           [if-exp (condition if-true)
-                   (list 'if
-                         (unparse-expression condition)
-                         (unparse-expression if-true))]
-           [if-else-exp (condition if-true if-false)
-                        (list 'if
-                              (unparse-expression condition)
-                              (unparse-expression if-true)
-                              (unparse-expression if-false))]
-           [set!-exp (name value)
-                     (list 'set!
-                           name
-                           (unparse-expression value))])))

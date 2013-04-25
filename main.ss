@@ -19,6 +19,6 @@
 (define (rep)
   (begin
     (display "--> ")
-    (write (eval-expression (parse-expression (lexical-address (read))) (lexically-addressed-environment '())))
+    (write (eval-expression (lexical-address (parse-expression (read))) (lexically-addressed-environment '())))
     (newline)
     (rep)))
