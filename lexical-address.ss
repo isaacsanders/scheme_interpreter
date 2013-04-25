@@ -31,41 +31,50 @@
                  ((E (lambda (env vars position)
                        (cond
                          ((null? vars) env)
-                         ((symbol? vars) (cons `(,vars : 0 ,position) env))
-                         ((list? vars) (E (cons `(,(car vars) : 0 ,position) env)
+                         ((symbol? vars) (cons (cons vars
+                                                     (lexical-addressed-variable 0 position))
+                                               env))
+                         ((list? vars) (E (cons (cons (car vars)
+                                                      (lexical-addressed-variable 0 position))
+                                                env)
                                                 (cdr vars)
                                                 (add1 position)))
-                         (else (cons* `(,(car vars) : 0 ,position)
-                                      `(,(cdr vars) : 0 ,(add1 position))
+                         (else (cons* (cons (car vars) (lexical-addressed-variable 0 position))
+                                      (cons (cdr vars) (lexical-addressed-variable 0 (add1 position)))
                                       env))))))
                  (E (increase-depth env) vars 0)))))
     (letrec
-      ((L (lambda (expr env)
-            (cond
-              ((symbol? expr) (let [[found (assq expr env)]]
+      ((L-env (lambda (env)
+                (lambda (expr)
+                  (L expr env))))
+       (L (lambda (expr env)
+            (cases expression expr
+                   [variable (id) (let [[found (assq id env)]]
                                 (if found
                                   (cdr found)
-                                  `(,expr free))))
-              ((or (number? expr)
-                   (boolean? expr)
-                   (vector? expr)
-                   (char? expr)
-                   (string? expr)) expr)
-              ((null? expr) '())
-              ((pair? expr) (case (car expr)
-                              [(if) (if (eq? 3 (length expr))
-                                      `(if ,(L (cadr expr) env)
-                                         ,(L (caddr expr) env))
-                                      `(if ,(L (cadr expr) env)
-                                        ,(L (caddr expr) env)
-                                        ,(L (cadddr expr) env)))]
-                              [(quote) `(quote ,(cadr expr))]
-                              [(begin) (cons 'begin (cdr expr))]
-                              [(lambda) (let* [[new-env (extend-env env (cadr expr))]
-                                               [helper (lambda (expr)
-                                                        (L expr new-env))]]
-                                        `(lambda
-                                        ,(cadr expr)
-                                        ,(map helper (cddr expr))))]
-                              [else (map (lambda (expr) (L expr env)) expr)]))))))
+                                  (free-variable id)))]
+                   [lambda-exp (frmls bodies)
+                               (lambda-exp frmls (map (L-env (cases formals frmls
+                                      [unary (param) (extend-env env (list param))]
+                                      [param-list (params) (extend-env env params)]
+                                      [list-with-var-args (params var-args) (extend-env env (append params (list var-args)))]))
+                                    bodies))]
+                   [if-exp (condition if-true)
+                           (if-exp (L condition env)
+                             (L if-true env))]
+                   [if-else-exp (condition if-true if-false)
+                                (if-else-exp (L condition env)
+                                  (L if-true env)
+                                  (L if-false env))]
+                   [vector-exp (datum)
+                               (vector-exp (map (L-env env) datum))]
+                   [begin-exp (bodies) (cond
+                                         ((null? (cdr bodies)) (L (car bodies) env))
+                                         (else (begin (L (car bodies) env)
+                                                      (L (begin-exp (cdr bodies)) env))))]
+                   [app-exp (operator operands)
+                            (let ([procedure (L operator env)]
+                                  [args (map (L-env env) operands)])
+                              (app-exp procedure args))]
+                   [else expr]))))
       (L expr '()))))

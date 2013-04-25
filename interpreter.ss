@@ -3,7 +3,7 @@
 
 (define eval-one-exp
   (lambda (exp)
-    (let* ([parse-tree (parse-expression (lexical-address exp))]
+    (let* ([parse-tree (lexical-address (parse-expression exp))]
            [initial-environment (lexically-addressed-environment (list))]
            [result (eval-expression parse-tree initial-environment)])
       result)))
@@ -12,6 +12,7 @@
   (lambda (expr env)
     (cases expression expr
            [free-variable (id) (primitive id)]
+           [variable (id) (primitive id)]
            [lexical-addressed-variable (depth position) (apply-env env depth position)]
            [constant-exp (val) (cases constant val
                                       [boolean-literal (val) val]
@@ -103,8 +104,8 @@
       [(cdadr) (apply cdadr args)]
       [(exit)  (apply exit  args)]
 
-      [(map)    (apply map    args)]
-      [(apply)  (apply apply  args)]
+      [(map)    (map (lambda arg (apply-proc (car args) arg)) (cadr args))]
+      [(apply)  (apply-proc (car args) (cadr args))]
       [(assq)   (apply assq   args)]
       [(assv)   (apply assv   args)]
       [(append) (apply append args)]
@@ -129,16 +130,8 @@
                              [list-with-var-args (params var-args)
                                                  (eval-expression
                                                    (begin-exp bodies)
-                                                   (extend-env (append  (remp (lambda (x)
-                                                                                (member x
-                                                                                        (list-tail args
-                                                                                                   (length params))))
-                                                                              args)
-                                                                        (list (filter (lambda (x)
-                                                                                  (member x
-                                                                                          (list-tail args
-                                                                                                     (length params))))
-                                                                                args)))
-                                                               env))]
-                             )])
+                                                   (extend-env (append
+                                                                 (list-head args (length params))
+                                                                 (list (list-tail args (length params))))
+                                                               env))])])
       (proc args))))
