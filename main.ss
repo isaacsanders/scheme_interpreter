@@ -15,6 +15,7 @@
 ; <application>                  ::= (<expression> <expression>*)
 
 (load "interpreter.ss")
+(load "forAndReturnFirst.ss")
 
 (define (rl) (load "main.ss"))
 
