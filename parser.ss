@@ -66,6 +66,10 @@
                  (while-exp
                    (test-exp expression?)
                    (bodies (list-of expression?)))
+                 (case-exp
+                   (test-val expression?)
+                   (vals (list-of expression?))
+                   (actions (list-of expression?)))
                  (vector-exp
                    (datum (list-of expression?))))
 
@@ -186,6 +190,9 @@
           [(list? datum)
            (cond
              [(null? datum) (app-exp (free-variable 'list) '())]
+             [(eq? (car datum) 'case) (case-exp ((compose-parse-expression cadr) datum)
+                                                (map (compose quote-exp car) (cddr datum))
+                                                (map (compose-parse-expression cadr) (cddr datum)))]
              [(eq? (car datum) 'while) (while-exp (parse-expression (cadr datum)) (map parse-expression (cddr datum)))]
              [(eq? (car datum) 'cond) (cond-exp (map (compose-parse-expression car) (cdr datum))
                                                 (map (compose cdr (partial map parse-expression)) (cdr datum)))]
@@ -198,7 +205,7 @@
                                                 (map (compose-parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
              [(eq? (car datum) ':) (lexical-addressed-variable (cadr datum) (caddr datum))]
-             [(eq? (car datum) 'quote) (quote-exp (cdr datum))]
+             [(eq? (car datum) 'quote) (quote-exp (cadr datum))]
              [(eq? (car datum) 'lambda) (parse-lambda datum)]
              [(eq? (car datum) 'if)     (parse-if datum)]
              ; [(eq? (car datum) 'letrec) (parse-letrec datum)]

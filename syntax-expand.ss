@@ -62,6 +62,15 @@
                                                          (list (if-else-exp (free-variable (car syms))
                                                                             (free-variable (car syms))
                                                                             (or-exp (cdr bodies))))))))))))
+           (case-exp (test-val vals actions)
+                     (syntax-expand (let [[first-case (car vals)]
+                                          [first-action (car actions)]]
+                                      (if (equal? first-case (quote-exp 'else))
+                                        first-action
+                                        (if-else-exp (app-exp (free-variable 'member)
+                                                              (list test-val first-case))
+                                                     first-action
+                                                     (case-exp test-val (cdr vals) (cdr actions)))))))
            (if-exp (condition if-true)
                    (if-exp (syntax-expand condition)
                            (syntax-expand if-true)))

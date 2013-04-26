@@ -21,7 +21,7 @@
                                       [character-literal (val) val]
                                       [string-literal (val) val]
                                       [number-literal (val) val])]
-           [quote-exp (datum) (car datum)]
+           [quote-exp (datum) datum]
            [lambda-exp (formals bodies)
                        (make-closure formals bodies env)]
            [if-exp (condition if-true)
@@ -117,6 +117,7 @@
       [(assq)   (apply assq   args)]
       [(assv)   (apply assv   args)]
       [(append) (apply append args)]
+      [(member) (apply member args)]
 
       [else (eopl:error 'apply-primitive-proc "invalid primitive ~s" id)])))
 
@@ -176,6 +177,7 @@
     assq
     assv
     append
+    member
     ))
 
 (define apply-proc
