@@ -29,8 +29,6 @@
                    (position number?))
                  (free-variable
                    (name symbol?))
-                 (variable
-                   (name symbol?))
                  (constant-exp
                    (value constant?))
                  (quote-exp
@@ -180,15 +178,15 @@
 
 (define parse-expression
   (lambda (datum)
-    (cond [(symbol? datum) (variable datum)]
+    (cond [(symbol? datum) (free-variable datum)]
           [(boolean? datum) (constant-exp (boolean-literal datum))]
           [(number? datum) (constant-exp (number-literal datum))]
           [(string? datum) (constant-exp (string-literal datum))]
           [(vector? datum) (vector-exp (map parse-expression (vector->list datum)))]
           [(list? datum)
            (cond
+             [(null? datum) (app-exp (free-variable 'list) '())]
              [(eq? (car datum) 'while) (while-exp (parse-expression (cadr datum)) (map parse-expression (cddr datum)))]
-             [(null? datum) (app-exp (variable 'list) '())]
              [(eq? (car datum) 'cond) (cond-exp (map (compose-parse-expression car) (cdr datum))
                                                 (map (compose cdr (partial map parse-expression)) (cdr datum)))]
              [(eq? (car datum) 'and) (and-exp (map parse-expression (cdr datum)))]

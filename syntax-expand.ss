@@ -25,7 +25,7 @@
                      (syntax-expand (let [[first-cond (car conds)]
                                           [first-cond-true (car cond-trues)]]
                                       (cond
-                                        ((equal? first-cond (variable 'else)) (begin-exp first-cond-true))
+                                        ((equal? first-cond (free-variable 'else)) (begin-exp first-cond-true))
                                         ((null? (cdr conds)) (if (null? first-cond-true)
                                                                (if-exp first-cond
                                                                        first-cond)
@@ -49,16 +49,19 @@
                                                             (and-exp (cdr bodies))
                                                             (constant-exp (boolean-literal #f)))))))))
            (or-exp (bodies)
-                    (syntax-expand (if (null? bodies)
-                      (constant-exp (boolean-literal #f))
-                      (let [[first (car bodies)]]
-                        (cond
-                          ((null? (cdr bodies)) (if-else-exp first
-                                                             first
-                                                             (constant-exp (boolean-literal #f))))
-                          (else (if-else-exp first
-                                             first
-                                             (or-exp (cdr bodies)))))))))
+                   (syntax-expand (if (null? bodies)
+                                    (constant-exp (boolean-literal #f))
+                                    (let [[first (car bodies)]]
+                                      (cond
+                                        ((null? (cdr bodies)) (if-else-exp first
+                                                                           first
+                                                                           (constant-exp (boolean-literal #f))))
+                                        (else (let [[syms (syntax->datum (generate-temporaries '(a)))]]
+                                                (let-exp syms
+                                                         (list first)
+                                                         (list (if-else-exp (free-variable (car syms))
+                                                                            (free-variable (car syms))
+                                                                            (or-exp (cdr bodies))))))))))))
            (if-exp (condition if-true)
                    (if-exp (syntax-expand condition)
                            (syntax-expand if-true)))

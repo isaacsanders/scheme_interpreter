@@ -49,7 +49,7 @@
                   (L expr env))))
        (L (lambda (expr env)
             (cases expression expr
-                   [variable (id) (let [[found (assq id env)]]
+                   [free-variable (id) (let [[found (assq id env)]]
                                     (if found
                                       (cdr found)
                                       (free-variable id)))]
@@ -69,6 +69,9 @@
                    [vector-exp (datum)
                                (vector-exp (map (L-env env) datum))]
                    [begin-exp (bodies) (begin-exp (map (L-env env) bodies))]
+                   [while-exp (test-exp bodies)
+                              (while-exp (L test-exp env)
+                                         (map (L-env env) bodies))]
                    [app-exp (operator operands)
                             (let ([procedure (L operator env)]
                                   [args (map (L-env env) operands)])

@@ -33,9 +33,11 @@
                           (eval-expression if-false env))]
            [vector-exp (datum)
                        (list->vector (map (eval-expression-env env) datum))]
-		   [while-exp (test-exp bodies)
-					  (if (eval-expression test-exp env)
-						(begin (eval-expression (begin-exp bodies) env) (eval-expression expr env)))]
+           [while-exp (test-exp bodies)
+                      (let loop [[test (eval-expression test-exp env)]]
+                        (if test
+                          (begin (eval-expression (begin-exp bodies) env)
+                                 (loop (eval-expression test-exp env)))))]
            [begin-exp (bodies) (cond
                                  ((null? (cdr bodies)) (eval-expression (car bodies) env))
                                  (else (begin (eval-expression (car bodies) env)
