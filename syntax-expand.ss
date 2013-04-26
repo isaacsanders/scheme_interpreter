@@ -6,11 +6,59 @@
            (lambda-exp (formals bodies)
                        (lambda-exp formals (map syntax-expand bodies)))
            (let-exp (syms vals bodies)
-                    (app-exp (lambda-exp (param-list syms)
-                                         (map syntax-expand bodies))
-                             (map syntax-expand vals)))
+                    (syntax-expand (app-exp (lambda-exp (param-list syms)
+                                          bodies)
+                             vals)))
+           (let*-exp (syms vals bodies)
+                     (syntax-expand (cond
+                                      ((null? syms) (begin-exp bodies))
+                                      ((null? (cdr syms)) (app-exp (lambda-exp (param-list (list (car syms))) bodies)
+                                                                   (list (car vals))))
+                                      (else (app-exp (lambda-exp (param-list (list (car syms)))
+                                                                 (list (let*-exp (cdr syms)
+                                                                                 (cdr vals)
+                                                                                 bodies)))
+                                                     (list (car vals)))))))
            (begin-exp (bodies)
                       (begin-exp (map syntax-expand bodies)))
+           (cond-exp (conds cond-trues)
+                     (syntax-expand (let [[first-cond (car conds)]
+                                          [first-cond-true (car cond-trues)]]
+                                      (cond
+                                        ((equal? first-cond (variable 'else)) (begin-exp first-cond-true))
+                                        ((null? (cdr conds)) (if (null? first-cond-true)
+                                                               (if-exp first-cond
+                                                                       first-cond)
+                                                               (if-exp first-cond
+                                                                       (begin-exp first-cond-true))))
+                                        ((null? first-cond-true) (if-else-exp first-cond
+                                                                              first-cond
+                                                                              (cond-exp (cdr conds) (cdr cond-trues))))
+                                        (else (if-else-exp first-cond
+                                                           (begin-exp first-cond-true)
+                                                           (cond-exp (cdr conds) (cdr cond-trues))))))))
+           (and-exp (bodies)
+                    (syntax-expand (if (null? bodies)
+                                     (constant-exp (boolean-literal #t))
+                                     (let [[first (car bodies)]]
+                                       (cond
+                                         ((null? (cdr bodies)) (if-else-exp first
+                                                                            first
+                                                                            (constant-exp (boolean-literal #f))))
+                                         (else (if-else-exp first
+                                                            (and-exp (cdr bodies))
+                                                            (constant-exp (boolean-literal #f)))))))))
+           (or-exp (bodies)
+                    (syntax-expand (if (null? bodies)
+                      (constant-exp (boolean-literal #f))
+                      (let [[first (car bodies)]]
+                        (cond
+                          ((null? (cdr bodies)) (if-else-exp first
+                                                             first
+                                                             (constant-exp (boolean-literal #f))))
+                          (else (if-else-exp first
+                                             first
+                                             (or-exp (cdr bodies)))))))))
            (if-exp (condition if-true)
                    (if-exp (syntax-expand condition)
                            (syntax-expand if-true)))

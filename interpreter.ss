@@ -12,8 +12,9 @@
 (define eval-expression
   (lambda (expr env)
     (cases expression expr
-           [free-variable (id) (primitive id)]
-           [variable (id) (primitive id)]
+           [free-variable (id) (if (member id primitives)
+                                 (primitive id)
+                                 (eopl:error 'eval-expression "Variable ~s not bound" id))]
            [lexical-addressed-variable (depth position) (apply-env env depth position)]
            [constant-exp (val) (cases constant val
                                       [boolean-literal (val) val]
@@ -39,11 +40,11 @@
                                  ((null? (cdr bodies)) (eval-expression (car bodies) env))
                                  (else (begin (eval-expression (car bodies) env)
                                               (eval-expression (begin-exp (cdr bodies)) env))))]
-           [let-exp (syms vals bodies) (display "Something went wrong.")]
            [app-exp (operator operands)
                     (let ([procedure (eval-expression operator env)]
                           [args (map (eval-expression-env env) operands)])
-                      (apply-proc procedure args))])))
+                      (apply-proc procedure args))]
+           [else (eopl:error 'eval-expression "Evaluation error with: ~s" expr)])))
 
 (define eval-expression-env
   (lambda (env)
@@ -116,6 +117,64 @@
       [(append) (apply append args)]
 
       [else (eopl:error 'apply-primitive-proc "invalid primitive ~s" id)])))
+
+(define primitives
+  '(
+    +
+    -
+    *
+    /
+    add1
+    sub1
+    zero?
+    not
+    =
+    <
+    <=
+    >
+    >=
+    cons
+    car
+    cdr
+    list
+    null?
+    eq?
+    equal?
+    atom?
+    length
+    list->vector
+    list?
+    pair?
+    procedure?
+    vector->list
+    vector
+    make-vector
+    vector-ref
+    vector?
+    number?
+    symbol?
+    set-car!
+    set-cdr!
+    vector-set!
+    cadr
+    caar
+    cddr
+    cdar
+    cadar
+    caddr
+    caaar
+    caadr
+    cddar
+    cdddr
+    cdaar
+    cdadr
+    exit
+    map
+    apply
+    assq
+    assv
+    append
+    ))
 
 (define apply-proc
   (lambda (proc args)

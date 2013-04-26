@@ -68,10 +68,7 @@
                                              (L if-false env))]
                    [vector-exp (datum)
                                (vector-exp (map (L-env env) datum))]
-                   [begin-exp (bodies) (cond
-                                         ((null? (cdr bodies)) (L (car bodies) env))
-                                         (else (begin (L (car bodies) env)
-                                                      (L (begin-exp (cdr bodies)) env))))]
+                   [begin-exp (bodies) (begin-exp (map (L-env env) bodies))]
                    [app-exp (operator operands)
                             (let ([procedure (L operator env)]
                                   [args (map (L-env env) operands)])
