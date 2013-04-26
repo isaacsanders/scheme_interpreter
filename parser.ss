@@ -54,6 +54,9 @@
                    (condition expression?)
                    (if-true expression?)
                    (if-false expression?))
+				 (while-exp
+				   (test-exp expression?)
+				   (bodies (list-of expression?)))
                  (vector-exp
                    (datum (list-of expression?))))
 
@@ -196,6 +199,7 @@
           [(list? datum)
            (cond
              [(eq? (cadr datum) 'free) (free-variable (car datum))]
+			 [(eq? (car datum) 'while) (while-exp (parse-expression (cadr datum)) (map parse-expression (cddr datum)))]
              [(eq? (car datum) 'let) (let-exp (map car (cadr datum))
                                               (map (lambda (binding)
                                                      (parse-expression (cadr binding))) (cadr datum))
