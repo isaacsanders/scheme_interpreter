@@ -22,12 +22,12 @@
 (define (rep)
   (begin
     (display "--> ")
-    (write (eval-expression
+    (write (eval-top-expression
              (lexical-address
                (syntax-expand
                  (parse-expression
                    (read))))
-             (lexically-addressed-environment '())))
+             (lexically-addressed-environment *global-env*)))
     (newline)
     (rep)))
 
