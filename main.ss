@@ -1,3 +1,8 @@
+; <form>                         ::= <definition>
+;                                  | <expression>
+; <definition>                   ::= <variable definition>
+;                                  | (begin <definition>*)
+; <variable definition>          ::= (define <variable> <expression>)
 ; <expression>                   ::= <constant>
 ;                                  | <variable>
 ;                                  | (quote <datum>)

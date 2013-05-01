@@ -76,6 +76,8 @@
                             (let ([procedure (L operator env)]
                                   [args (map (L-env env) operands)])
                               (app-exp procedure args))]
+                   [define-exp (name value)
+                               (define-exp name (L value env))]
                    [set!-exp (variable value)
                              (set!-exp (let* [[name (cadr variable)]
                                               [found (assq name env)]]
