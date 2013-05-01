@@ -5,9 +5,15 @@
 (define eval-one-exp
   (lambda (exp)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-expression exp)))]
-           [initial-environment (lexically-addressed-environment (list))]
-           [result (eval-expression parse-tree initial-environment)])
+           [initial-environment (lexically-addressed-environment *global-env*)]
+           [result (eval-top-expression parse-tree initial-environment)])
       result)))
+	  
+(define eval-top-expression
+  (lambda (expr env)
+	(cases expression expr
+		[define-exp (sym body) (set! *global-env* (cons (cons sym (eval-expression body env)) *global-env*))]
+		[else (eval-expression expr env)])))
 
 (define eval-expression
   (lambda (expr env)
@@ -40,9 +46,9 @@
                           (begin (eval-expression (begin-exp bodies) env)
                                  (loop (eval-expression test-exp env)))))]
            [begin-exp (bodies) (cond
-                                 ((null? (cdr bodies)) (eval-expression (car bodies) env))
-                                 (else (begin (eval-expression (car bodies) env)
-                                              (eval-expression (begin-exp (cdr bodies)) env))))]
+                                 ((null? (cdr bodies)) (eval-top-expression (car bodies) env))
+                                 (else (begin (eval-top-expression (car bodies) env)
+                                              (eval-top-expression (begin-exp (cdr bodies)) env))))]
            [set!-exp (variable value)
                      (cases expression variable
                             (lexical-addressed-variable (depth position)
@@ -197,6 +203,10 @@
 (define *global-env*
   (map cons primitives (map primitive primitives)))
 
+(define reset-global-env
+	(lambda ()
+		(set! *global-env* (map cons primitives (map primitive primitives)))))
+  
 (define apply-proc
   (lambda (proc args)
     (if (procedure? proc)

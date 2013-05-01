@@ -83,6 +83,8 @@
                              (map syntax-expand operands)))
            (vector-exp (datum)
                        (vector-exp (map syntax-expand datum)))
+		   (define-exp (sym body)
+						(define-exp sym (syntax-expand body)))
            (else expr))))
 
 
