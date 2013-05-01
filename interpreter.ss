@@ -13,6 +13,10 @@
   (lambda (expr env)
 	(cases expression expr
 		[define-exp (sym body) (set! *global-env* (cons (cons sym (eval-expression body env)) *global-env*))]
+		[begin-exp (bodies) (cond
+                                 ((null? (cdr bodies)) (eval-top-expression (car bodies) env))
+                                 (else (begin (eval-top-expression (car bodies) env)
+                                              (eval-top-expression (begin-exp (cdr bodies)) env))))]
 		[else (eval-expression expr env)])))
 
 (define eval-expression
@@ -46,9 +50,9 @@
                           (begin (eval-expression (begin-exp bodies) env)
                                  (loop (eval-expression test-exp env)))))]
            [begin-exp (bodies) (cond
-                                 ((null? (cdr bodies)) (eval-top-expression (car bodies) env))
-                                 (else (begin (eval-top-expression (car bodies) env)
-                                              (eval-top-expression (begin-exp (cdr bodies)) env))))]
+                                 ((null? (cdr bodies)) (eval-expression (car bodies) env))
+                                 (else (begin (eval-expression (car bodies) env)
+                                              (eval-expression (begin-exp (cdr bodies)) env))))]
            [set!-exp (variable value)
                      (cases expression variable
                             (lexical-addressed-variable (depth position)
