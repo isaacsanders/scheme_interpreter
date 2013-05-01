@@ -76,5 +76,12 @@
                             (let ([procedure (L operator env)]
                                   [args (map (L-env env) operands)])
                               (app-exp procedure args))]
+                   [set!-exp (variable value)
+                             (set!-exp (let* [[name (cadr variable)]
+                                              [found (assq name env)]]
+                                         (if found
+                                           (cdr found)
+                                           (free-variable name)))
+                                       (L value env))]
                    [else expr]))))
       (L expr '()))))

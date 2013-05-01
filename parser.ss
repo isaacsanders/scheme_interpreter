@@ -23,6 +23,13 @@
 (define quoteable?
   (lambda (val) #t))
 
+(define variable?
+  (lambda (expr)
+    (cases expression expr
+           (lexical-addressed-variable (depth position) #t)
+           (free-variable (name) #t)
+           (else #f))))
+
 (define-datatype expression expression?
                  (lexical-addressed-variable
                    (depth number?)
@@ -66,6 +73,9 @@
                  (while-exp
                    (test-exp expression?)
                    (bodies (list-of expression?)))
+                 (set!-exp
+                   (variable variable?)
+                   (value expression?))
                  (case-exp
                    (test-val expression?)
                    (vals (list-of expression?))
@@ -150,18 +160,18 @@
 ; (define unparse-binding
 ;   (lambda (binding)
 ;     (list (car binding) (unparse-expression (cadr binding)))))
-; 
-; (define parse-set
-;   (lambda (datum)
-;     (cond
-;       ((null? (cddr datum))
-;        (eopl:error 'parse-expression
-;                    "No value to set ~s to" (cadr datum)))
-;       ((not (null? (cdddr datum)))
-;        (eopl:error 'parse-expression
-;                    "Too many bodies in ~s" datum))
-;       (else (set!-exp (cadr datum) (parse-expression (caddr datum)))))))
-; 
+
+(define parse-set
+  (lambda (datum)
+    (cond
+      ((null? (cddr datum))
+       (eopl:error 'parse-expression
+                   "No value to set ~s to" (cadr datum)))
+      ((not (null? (cdddr datum)))
+       (eopl:error 'parse-expression
+                   "Too many bodies in ~s" datum))
+      (else (set!-exp (free-variable (cadr datum)) (parse-expression (caddr datum)))))))
+
 ; (define parse-bindings
 ;   (lambda (bindings)
 ;     (map parse-binding bindings)))
@@ -209,7 +219,7 @@
              [(eq? (car datum) 'lambda) (parse-lambda datum)]
              [(eq? (car datum) 'if)     (parse-if datum)]
              ; [(eq? (car datum) 'letrec) (parse-letrec datum)]
-             ; [(eq? (car datum) 'set!)   (parse-set datum)]
+             [(eq? (car datum) 'set!)   (parse-set datum)]
              [(eq? (car datum) 'begin) (begin-exp (map parse-expression (cdr datum)))]
              [(and (pair? (car datum))
                    (eq? (caar datum) 'quote)) (quote-exp (car datum))]
