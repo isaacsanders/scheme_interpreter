@@ -5,24 +5,29 @@
 (define eval-one-exp
   (lambda (exp)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-expression exp)))]
-           [initial-environment (lexically-addressed-environment *global-env*)]
-           [result (eval-top-expression parse-tree initial-environment)])
+           [initial-environment (lexically-addressed-environment (list))]
+           [internal-definitions (list)]
+           [result (eval-expression parse-tree
+                                    initial-environment
+                                    internal-definitions)])
       result)))
-	  
+
 (define eval-top-expression
   (lambda (expr env)
-	(cases expression expr
-		[define-exp (sym body) (set! *global-env* (cons (cons sym (eval-expression body env)) *global-env*))]
-		[begin-exp (bodies) (cond
+    (cases expression expr
+           [define-exp (sym body) (set! *global-env* (cons (cons sym (eval-expression body env)) *global-env*))]
+           [begin-exp (bodies) (cond
                                  ((null? (cdr bodies)) (eval-top-expression (car bodies) env))
                                  (else (begin (eval-top-expression (car bodies) env)
                                               (eval-top-expression (begin-exp (cdr bodies)) env))))]
-		[else (eval-expression expr env)])))
+           [else (eval-expression expr env)])))
 
 (define eval-expression
-  (lambda (expr env)
+  (lambda (expr env definitions)
     (cases expression expr
-           [free-variable (id) (let [[found (assq id *global-env*)]]
+           [free-variable (id) (let* [[internally-defined (assq id definitions)]
+                                      [found (or internally-defined
+                                                 (assq id *global-env*))]]
                                  (if found
                                    (cdr found)
                                    (eopl:error 'eval-expression "Variable ~s not bound" id)))]
@@ -36,23 +41,23 @@
            [lambda-exp (formals bodies)
                        (make-closure formals bodies env)]
            [if-exp (condition if-true)
-                   (if (eval-expression condition env)
-                     (eval-expression if-true env))]
+                   (if (eval-expression condition env definitions)
+                     (eval-expression if-true env definitions))]
            [if-else-exp (condition if-true if-false)
-                        (if (eval-expression condition env)
-                          (eval-expression if-true env)
-                          (eval-expression if-false env))]
+                        (if (eval-expression condition env definitions)
+                          (eval-expression if-true env definitions)
+                          (eval-expression if-false env definitions))]
            [vector-exp (datum)
-                       (list->vector (map (eval-expression-env env) datum))]
+                       (list->vector (map (eval-expression-env env definitions) datum))]
            [while-exp (test-exp bodies)
-                      (let loop [[test (eval-expression test-exp env)]]
+                      (let loop [[test (eval-expression test-exp env definitions)]]
                         (if test
-                          (begin (eval-expression (begin-exp bodies) env)
-                                 (loop (eval-expression test-exp env)))))]
+                          (begin (eval-expression (begin-exp bodies) env definitions)
+                                 (loop (eval-expression test-exp env definitions)))))]
            [begin-exp (bodies) (cond
-                                 ((null? (cdr bodies)) (eval-expression (car bodies) env))
-                                 (else (begin (eval-expression (car bodies) env)
-                                              (eval-expression (begin-exp (cdr bodies)) env))))]
+                                 ((null? (cdr bodies)) (eval-expression (car bodies) env definitions))
+                                 (else (begin (eval-expression (car bodies) env definitions)
+                                              (eval-expression (begin-exp (cdr bodies)) env definitions))))]
            [set!-exp (variable value)
                      (cases expression variable
                             (lexical-addressed-variable (depth position)
@@ -60,29 +65,36 @@
                                                                       (car
                                                                         (list-tail (cadr env) depth))
                                                                       position)
-                                                                    (eval-expression value env)))
+                                                                    (eval-expression value env definitions)))
                             (free-variable (name) (set! *global-env*
                                                     (cons (cons name
-                                                                (eval-expression value env))
+                                                                (eval-expression value env definitions))
                                                           *global-env*)))
                             (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [app-exp (operator operands)
-                    (let ([procedure (eval-expression operator env)]
-                          [args (map (eval-expression-env env) operands)])
-                      (apply-proc procedure args))]
+                    (let ([procedure (eval-expression operator env definitions)]
+                          [args (map (eval-expression-env env definitions) operands)])
+                      (apply-proc procedure args definitions))]
+           [define-exp (name value)
+                       (set! definitions (cons
+                                           (cons name
+                                                 (eval-expression value
+                                                                  env
+                                                                  definitions))
+                                           definitions))]
            [else (eopl:error 'eval-expression "Evaluation error with: ~s" expr)])))
 
 (define eval-expression-env
-  (lambda (env)
+  (lambda (env definitions)
     (lambda (expr)
-      (eval-expression expr env))))
+      (eval-expression expr env definitions))))
 
 (define make-closure
   (lambda (formals bodies env)
     (closure formals bodies env)))
 
 (define apply-primitive-proc
-  (lambda (id args)
+  (lambda (id args definitions)
     (case id
       [(+)     (apply +     args)]
       [(-)     (apply -     args)]
@@ -136,8 +148,8 @@
       [(cdadr) (apply cdadr args)]
       [(exit)  (apply exit  args)]
 
-      [(map)    (map (lambda arg (apply-proc (car args) arg)) (cadr args))]
-      [(apply)  (apply-proc (car args) (cadr args))]
+      [(map)    (map (lambda arg (apply-proc (car args) arg definitions)) (cdr args))]
+      [(apply)  (apply-proc (car args) (cadr args) definitions)]
       [(assq)   (apply assq   args)]
       [(assv)   (apply assv   args)]
       [(append) (apply append args)]
@@ -212,7 +224,7 @@
 		(set! *global-env* (map cons primitives (map primitive primitives)))))
   
 (define apply-proc
-  (lambda (proc args)
+  (lambda (proc args definitions)
     (if (procedure? proc)
       (cases procedure proc
              [primitive (id) (apply-primitive-proc id args)]
@@ -221,16 +233,19 @@
                              [unary (param)
                                     (eval-expression
                                       (begin-exp bodies)
-                                      (extend-env (list args) env))]
+                                      (extend-env (list args) env)
+                                      definitions)]
                              [param-list (params)
                                          (eval-expression
                                            (begin-exp bodies)
-                                           (extend-env args env))]
+                                           (extend-env args env)
+                                           definitions)]
                              [list-with-var-args (params var-args)
                                                  (eval-expression
                                                    (begin-exp bodies)
                                                    (extend-env (append
                                                                  (list-head args (length params))
                                                                  (list (list-tail args (length params))))
-                                                               env))])])
+                                                               env)
+                                                   definitions)])])
       (proc args))))
