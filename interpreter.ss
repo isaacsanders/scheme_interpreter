@@ -13,16 +13,13 @@
   (lambda (expr env)
     (cases expression expr
            [define-exp (sym body)
-                       (set! *global-env* (cons (cons sym
-                                                      (eval-expression body
-                                                                       env
-                                                                       (list)))
+                       (set! *global-env* (cons (cons sym (eval-expression body env))
                                                 *global-env*))]
            [begin-exp (bodies) (cond
                                  ((null? (cdr bodies)) (eval-top-expression (car bodies) env))
                                  (else (begin (eval-top-expression (car bodies) env)
                                               (eval-top-expression (begin-exp (cdr bodies)) env))))]
-           [else (eval-expression expr env (list))])))
+           [else (eval-expression expr env)])))
 
 (define eval-expression
   (lambda (expr env)
