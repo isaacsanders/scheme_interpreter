@@ -5,7 +5,7 @@
 (define eval-one-exp
   (lambda (exp)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-expression exp)))]
-           [initial-environment (lexically-addressed-environment *global-env*)]
+           [initial-environment (lexically-addressed-environment (list))]
            [result (eval-top-expression parse-tree initial-environment)])
       result)))
 	  
@@ -64,6 +64,19 @@
                             (free-variable (name) (set! *global-env*
                                                     (cons (cons name
                                                                 (eval-expression value env))
+                                                          *global-env*)))
+                            (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
+           [define-exp (sym body)
+                     (cases expression sym
+                            (lexical-addressed-variable (depth position)
+                                                          (set-car! (list-tail
+                                                                      (car
+                                                                        (list-tail (cadr env) depth))
+                                                                      position)
+                                                                    (eval-expression body env)))
+                            (free-variable (name) (set! *global-env*
+                                                    (cons (cons name
+                                                                (eval-expression body env))
                                                           *global-env*)))
                             (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [app-exp (operator operands)

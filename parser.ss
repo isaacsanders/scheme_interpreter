@@ -56,6 +56,10 @@
                    (syms (list-of symbol?))
                    (vals (list-of expression?))
                    (bodies (list-of expression?)))
+				 (letrec-exp
+				   (syms (list-of symbol?))
+				   (vals (list-of expression?))
+				   (bodies (list-of expression?)))
                  (cond-exp
                    (conds (list-of expression?))
                    (cond-trues (list-of (list-of expression?))))
@@ -216,6 +220,9 @@
                                               (map (compose-parse-expression cadr) (cadr datum))
                                               (map parse-expression (cddr datum)))]
              [(eq? (car datum) 'let*) (let*-exp (map car (cadr datum))
+                                                (map (compose-parse-expression cadr) (cadr datum))
+                                                (map parse-expression (cddr datum)))]
+			 [(eq? (car datum) 'letrec) (letrec-exp (map car (cadr datum))
                                                 (map (compose-parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
              [(eq? (car datum) ':) (lexical-addressed-variable (cadr datum) (caddr datum))]

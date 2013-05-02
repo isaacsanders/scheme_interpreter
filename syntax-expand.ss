@@ -85,6 +85,11 @@
                        (vector-exp (map syntax-expand datum)))
 		   (define-exp (sym body)
 						(define-exp sym (syntax-expand body)))
+		   (letrec-exp (syms vals bodies)
+						(app-exp (lambda-exp (param-list '()) (create-define-expression-list syms vals bodies)) '()))
            (else expr))))
 
-
+(define create-define-expression-list
+	(lambda (syms vals bodies)
+		(if (null? syms) bodies
+			(cons (define-exp (car syms) (syntax-expand (car vals))) (create-define-expression-list (cdr syms) (cdr vals) bodies))))) 
