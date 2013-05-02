@@ -19,6 +19,21 @@
                                                                                  (cdr vals)
                                                                                  bodies)))
                                                      (list (car vals)))))))
+           (letrec-exp (syms vals bodies)
+                       (let [[temp-vars (syntax->datum (generate-temporaries syms))]]
+                         (syntax-expand (let-exp syms
+                                                 (make-list (length syms)
+                                                            (app-exp
+                                                              (free-variable 'nil)
+                                                              (list)))
+                                                 (list (let-exp
+                                                         temp-vars
+                                                         vals
+                                                         (append (map set!-exp
+                                                              (map free-variable syms)
+                                                              (map free-variable temp-vars))
+                                                                 bodies)))))))
+
            (begin-exp (bodies)
                       (begin-exp (map syntax-expand bodies)))
            (cond-exp (conds cond-trues)

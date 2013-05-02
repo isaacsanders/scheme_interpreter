@@ -30,6 +30,17 @@
            (free-variable (name) #t)
            (else #f))))
 
+(define definition?
+  (lambda (expr)
+    (cases expression expr
+           (define-exp (name value) #t)
+           (begin-exp (bodies)
+                      (cond
+                        ((null? bodies) #t)
+                        (else (and (definition? (car bodies))
+                                   (definition? (begin-exp (cdr bodies)))))))
+           (else #f))))
+
 (define-datatype expression expression?
                  (lexical-addressed-variable
                    (depth number?)
@@ -104,12 +115,6 @@
               (else (and (pred (car lat)) (L (cdr lat))))))))
       L)))
 
-(define binding?
-  (lambda (datum)
-    (and (list? datum)
-         (eq? (length datum) 2)
-         (symbol? (car datum)))))
-
 (define parse-lambda
   (lambda (datum)
     (define split-param-list-and-var-args
@@ -117,9 +122,10 @@
         (letrec
           ((S (lambda (old-list split-list)
                 (cond
-                  ((not (pair? (cdr param-list))) (cons (append split-list
-                                                                (list (car param-list)))
-                                                        (cdr param-list)))
+                  ((not (pair? (cdr param-list)))
+                   (cons (append split-list
+                                 (list (car param-list)))
+                         (cdr param-list)))
                   (else (S (cdr old-list) (cons (car old-list) split-list)))))))
           (S param-list '()))))
     (cond
@@ -130,11 +136,12 @@
                    (map parse-expression (cddr datum))))
 
       ((and (not (list? (cadr datum)))
-            (pair? (cadr datum))) (let* ((params (split-param-list-and-var-args (cadr datum)))
-                                         (param-list (car params))
-                                         (var-args (cdr params)))
-            (lambda-exp (list-with-var-args param-list var-args)
-                        (map parse-expression (cddr datum)))))
+            (pair? (cadr datum)))
+       (let* ((params (split-param-list-and-var-args (cadr datum)))
+              (param-list (car params))
+              (var-args (cdr params)))
+         (lambda-exp (list-with-var-args param-list var-args)
+                     (map parse-expression (cddr datum)))))
 
       (((list-of symbol?) (cadr datum))
        (lambda-exp (param-list (cadr datum))
@@ -157,45 +164,28 @@
                     (parse-expression (cadddr datum))))
       (else (report-parse-error "Invalid if-exp ~s" datum)))))
 
-; (define parse-binding
-;   (lambda (binding)
-;     (cond
-;       ((binding? binding) (list (car binding) (parse-expression (cadr binding))))
-;       (else (eopl:error 'parse-expression
-;                         "Invalid binding ~s" binding)))))
-; 
-; (define unparse-binding
-;   (lambda (binding)
-;     (list (car binding) (unparse-expression (cadr binding)))))
-
-(define parse-set
+(define parse-set!
   (lambda (datum)
     (cond
       ((null? (cddr datum))
-       (eopl:error 'parse-expression
-                   "No value to set ~s to" (cadr datum)))
+       (report-parse-error "No value to set ~s to" (cadr datum)))
       ((not (null? (cdddr datum)))
-       (eopl:error 'parse-expression
-                   "Too many bodies in ~s" datum))
+       (report-parse-error "Too many bodies in ~s" datum))
       (else (set!-exp (free-variable (cadr datum)) (parse-expression (caddr datum)))))))
 
-; (define parse-bindings
-;   (lambda (bindings)
-;     (map parse-binding bindings)))
-; 
-; (define parse-letrec
-;   (lambda (datum)
-;     (cond
-;       ((or (null? (cddr datum))
-;            (not (list? (cadr datum))))
-;        (eopl:error 'parse-expression
-;                    "No body for letrec-exp ~s" datum))
-;       (else (letrec-exp (parse-bindings (cadr datum))
-;                         (map parse-expression (cddr datum)))))))
-
-(define compose-parse-expression
-  (lambda (proc)
-    (compose parse-expression proc)))
+(define parse-letrec
+  (lambda (datum)
+    (cond
+      ((or (null? (cddr datum))
+           (not (list? (cadr datum))))
+       (eopl:error 'parse-expression
+                   "No body for letrec-exp ~s" datum))
+      (else (letrec-exp (map car (cadr datum))
+                        (map (compose
+                               parse-expression
+                               cadr)
+                             (cadr datum))
+                        (map parse-expression (cddr datum)))))))
 
 (define parse-expression
   (lambda (datum)
@@ -208,19 +198,19 @@
            (cond
              [(null? datum) (app-exp (free-variable 'list) '())]
              [(eq? (car datum) 'define) (define-exp (cadr datum) (parse-expression (caddr datum)))]
-             [(eq? (car datum) 'case) (case-exp ((compose-parse-expression cadr) datum)
+             [(eq? (car datum) 'case) (case-exp ((compose parse-expression cadr) datum)
                                                 (map (compose quote-exp car) (cddr datum))
-                                                (map (compose-parse-expression cadr) (cddr datum)))]
+                                                (map (compose parse-expression cadr) (cddr datum)))]
              [(eq? (car datum) 'while) (while-exp (parse-expression (cadr datum)) (map parse-expression (cddr datum)))]
-             [(eq? (car datum) 'cond) (cond-exp (map (compose-parse-expression car) (cdr datum))
+             [(eq? (car datum) 'cond) (cond-exp (map (compose parse-expression car) (cdr datum))
                                                 (map (compose cdr (partial map parse-expression)) (cdr datum)))]
              [(eq? (car datum) 'and) (and-exp (map parse-expression (cdr datum)))]
              [(eq? (car datum) 'or) (or-exp (map parse-expression (cdr datum)))]
              [(eq? (car datum) 'let) (let-exp (map car (cadr datum))
-                                              (map (compose-parse-expression cadr) (cadr datum))
+                                              (map (compose parse-expression cadr) (cadr datum))
                                               (map parse-expression (cddr datum)))]
              [(eq? (car datum) 'let*) (let*-exp (map car (cadr datum))
-                                                (map (compose-parse-expression cadr) (cadr datum))
+                                                (map (compose parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
 			 [(eq? (car datum) 'letrec) (letrec-exp (map car (cadr datum))
                                                 (map (compose-parse-expression cadr) (cadr datum))
@@ -229,13 +219,12 @@
              [(eq? (car datum) 'quote) (quote-exp (cadr datum))]
              [(eq? (car datum) 'lambda) (parse-lambda datum)]
              [(eq? (car datum) 'if)     (parse-if datum)]
-             ; [(eq? (car datum) 'letrec) (parse-letrec datum)]
-             [(eq? (car datum) 'set!)   (parse-set datum)]
+             [(eq? (car datum) 'letrec) (parse-letrec datum)]
+             [(eq? (car datum) 'set!)   (parse-set! datum)]
              [(eq? (car datum) 'begin) (begin-exp (map parse-expression (cdr datum)))]
              [(and (pair? (car datum))
                    (eq? (caar datum) 'quote)) (quote-exp (car datum))]
              [(eq? (cadr datum) 'free) (free-variable (car datum))]
              [else (app-exp (parse-expression (car datum))
                             (map parse-expression (cdr datum)))])]
-          [else (eopl:error 'parse-expression
-                            "Invalid concrete syntac ~s" datum)])))
+          [else (report-parse-error "Invalid concrete syntac ~s" datum)])))
