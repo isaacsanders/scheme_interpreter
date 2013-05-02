@@ -97,9 +97,16 @@
                    (actions (list-of expression?)))
                  (vector-exp
                    (datum (list-of expression?)))
-                 (define-exp
-                   (name symbol?)
-                   (value expression?)))
+				 (define-exp
+					(name symbol?)
+				    (value expression?))
+                 (define-to-expand-exp
+                   (names (list-of symbol?))
+                   (values (list-of expression?))
+				   (following-bodies (list-of expression?)))
+				 (global-define-exp
+				   (name symbol?)
+				   (value expression?)))
 
 (define report-parse-error
   (lambda (msg datum)
@@ -133,7 +140,10 @@
 
       ((symbol? (cadr datum))
        (lambda-exp (unary (cadr datum))
-                   (map parse-expression (cddr datum))))
+                   (let ([bodies (map parse-expression (cddr datum))])
+													(if (define-look-ahead bodies)
+														(list (compose-define-to-expand-exp bodies))
+														bodies))))
 
       ((and (not (list? (cadr datum)))
             (pair? (cadr datum)))
@@ -141,11 +151,17 @@
               (param-list (car params))
               (var-args (cdr params)))
          (lambda-exp (list-with-var-args param-list var-args)
-                     (map parse-expression (cddr datum)))))
+                     (let ([bodies (map parse-expression (cddr datum))])
+													(if (define-look-ahead bodies)
+														(list (compose-define-to-expand-exp bodies))
+														bodies)))))
 
       (((list-of symbol?) (cadr datum))
        (lambda-exp (param-list (cadr datum))
-                   (map parse-expression (cddr datum))))
+                   (let ([bodies (map parse-expression (cddr datum))])
+													(if (define-look-ahead bodies)
+														(list (compose-define-to-expand-exp bodies))
+														bodies))))
       (else (report-parse-error "Invalid parameter syntax ~s" datum)))))
 
 (define parse-if
@@ -187,6 +203,14 @@
                              (cadr datum))
                         (map parse-expression (cddr datum)))))))
 
+(define parse-top-expression
+  (lambda (datum)
+    (if (list? datum)
+			(cond [(eq? (car datum) 'define) (global-define-exp (cadr datum) (parse-expression (caddr datum)))]
+				  [(eq? (car datum) 'begin) (begin-exp (map parse-top-expression (cdr datum)))]
+				  [else (parse-expression datum)])
+		(parse-expression datum))))
+						
 (define parse-expression
   (lambda (datum)
     (cond [(symbol? datum) (free-variable datum)]
@@ -208,12 +232,15 @@
              [(eq? (car datum) 'or) (or-exp (map parse-expression (cdr datum)))]
              [(eq? (car datum) 'let) (let-exp (map car (cadr datum))
                                               (map (compose parse-expression cadr) (cadr datum))
-                                              (map parse-expression (cddr datum)))]
+												(let ([bodies (map parse-expression (cddr datum))])
+													(if (define-look-ahead bodies)
+														(list (compose-define-to-expand-exp bodies))
+														bodies)))]
              [(eq? (car datum) 'let*) (let*-exp (map car (cadr datum))
                                                 (map (compose parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
 			 [(eq? (car datum) 'letrec) (letrec-exp (map car (cadr datum))
-                                                (map (compose-parse-expression cadr) (cadr datum))
+                                                (map (compose parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
              [(eq? (car datum) ':) (lexical-addressed-variable (cadr datum) (caddr datum))]
              [(eq? (car datum) 'quote) (quote-exp (cadr datum))]
@@ -228,3 +255,25 @@
              [else (app-exp (parse-expression (car datum))
                             (map parse-expression (cdr datum)))])]
           [else (report-parse-error "Invalid concrete syntac ~s" datum)])))
+		  
+(define define-look-ahead
+	(lambda (bodies)
+		(if (null? bodies) #f
+			  (cases expression (car bodies)
+				[define-exp (name value) #t]
+				[else (define-look-ahead (cdr bodies))]))))
+				
+(define compose-define-to-expand-exp
+	(lambda (bodies)
+		(let ([vals (compose-define-to-expand-exp-helper bodies '(() () ()))])
+			(define-to-expand-exp (car vals) (cadr vals) (caddr vals)))))
+		
+				
+(define compose-define-to-expand-exp-helper
+	(lambda (bodies symsValsBodies)
+		(if (null? bodies) symsValsBodies
+			(cases expression (car bodies)
+				[define-exp (name value) (compose-define-to-expand-exp-helper (cdr bodies)
+											(list (cons name (car symsValsBodies)) (cons value (cadr symsValsBodies)) (caddr symsValsBodies)))]
+				[else (compose-define-to-expand-exp-helper (cdr bodies)
+											(list (car symsValsBodies) (cadr symsValsBodies) (cons (car bodies) (caddr symsValsBodies))))]))))

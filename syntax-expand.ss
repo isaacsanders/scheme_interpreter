@@ -98,10 +98,11 @@
                              (map syntax-expand operands)))
            (vector-exp (datum)
                        (vector-exp (map syntax-expand datum)))
-		   (define-exp (sym body)
-						(define-exp sym (syntax-expand body)))
-		   (letrec-exp (syms vals bodies)
-						(app-exp (lambda-exp (param-list '()) (create-define-expression-list syms vals bodies)) '()))
+		   (global-define-exp (sym body)
+						(global-define-exp sym (syntax-expand body)))
+		   (define-to-expand-exp (names values following-bodies)
+						(syntax-expand (letrec-exp names values following-bodies)))
+						
            (else expr))))
 
 (define create-define-expression-list

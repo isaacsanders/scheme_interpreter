@@ -4,25 +4,10 @@
 
 (define eval-one-exp
   (lambda (exp)
-    (let* ([parse-tree (lexical-address (syntax-expand (parse-expression exp)))]
+    (let* ([parse-tree (lexical-address (syntax-expand (parse-top-expression exp)))]
            [initial-environment (lexically-addressed-environment (list))]
-           [result (eval-top-expression parse-tree initial-environment)])
+           [result (eval-expression parse-tree initial-environment)])
       result)))
-
-(define eval-top-expression
-  (lambda (expr env)
-    (cases expression expr
-           [define-exp (sym body)
-                       (set! *global-env* (cons (cons sym
-                                                      (eval-expression body
-                                                                       env
-                                                                       (list)))
-                                                *global-env*))]
-           [begin-exp (bodies) (cond
-                                 ((null? (cdr bodies)) (eval-top-expression (car bodies) env))
-                                 (else (begin (eval-top-expression (car bodies) env)
-                                              (eval-top-expression (begin-exp (cdr bodies)) env))))]
-           [else (eval-expression expr env (list))])))
 
 (define eval-expression
   (lambda (expr env)
@@ -38,6 +23,12 @@
                                       [string-literal (val) val]
                                       [number-literal (val) val])]
            [quote-exp (datum) datum]
+		   [global-define-exp (sym body)
+                       (set! *global-env* (cons (cons sym
+                                                      (eval-expression body
+                                                                       env
+                                                                       ))
+                                                *global-env*))]
            [lambda-exp (formals bodies)
                        (make-closure formals bodies env)]
            [if-exp (condition if-true)

@@ -27,10 +27,10 @@
 (define (rep)
   (begin
     (display "--> ")
-    (write (eval-top-expression
+    (write (eval-expression
              (lexical-address
                (syntax-expand
-                 (parse-expression
+                 (parse-top-expression
                    (read))))
              (lexically-addressed-environment (list))))
     (newline)
