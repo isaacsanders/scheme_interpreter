@@ -1,24 +1,41 @@
 (load "parser.ss")
 
+(define expand-lambda-exp
+  (lambda (formals bodies)
+    (lambda-exp formals (map syntax-expand bodies))))
+
+(define expand-let-exp
+  (lambda (syms vals bodies)
+    (syntax-expand (app-exp
+                     (lambda-exp
+                       (param-list syms)
+                       bodies)
+                     vals))))
+
+(define expand-let*-exp
+  (lambda (syms vals bodies)
+    (syntax-expand (cond
+                     ((null? syms)
+                      (begin-exp bodies))
+                     ((null? (cdr syms))
+                      (app-exp (lambda-exp
+                                 (param-list (list (car syms)))
+                                 bodies)
+                               (list (car vals))))
+                     (else (app-exp (lambda-exp
+                                      (param-list (list (car syms)))
+                                      (list (let*-exp (cdr syms)
+                                                      (cdr vals)
+                                                      bodies)))
+                                    (list (car vals))))))))
+
 (define syntax-expand
   (lambda (expr)
     (cases expression expr
-           (lambda-exp (formals bodies)
-                       (lambda-exp formals (map syntax-expand bodies)))
-           (let-exp (syms vals bodies)
-                    (syntax-expand (app-exp (lambda-exp (param-list syms)
-                                          bodies)
-                             vals)))
+           (lambda-exp (formals bodies) (expand-lambda-exp formals bodies))
+           (let-exp (syms vals bodies) (expand-let-exp syms vals bodies))
            (let*-exp (syms vals bodies)
-                     (syntax-expand (cond
-                                      ((null? syms) (begin-exp bodies))
-                                      ((null? (cdr syms)) (app-exp (lambda-exp (param-list (list (car syms))) bodies)
-                                                                   (list (car vals))))
-                                      (else (app-exp (lambda-exp (param-list (list (car syms)))
-                                                                 (list (let*-exp (cdr syms)
-                                                                                 (cdr vals)
-                                                                                 bodies)))
-                                                     (list (car vals)))))))
+                     (expand-let*-exp syms vals bodies))
            (letrec-exp (syms vals bodies)
                        (let [[temp-vars (syntax->datum (generate-temporaries syms))]]
                          (syntax-expand (let-exp syms
@@ -30,10 +47,15 @@
                                                          temp-vars
                                                          vals
                                                          (append (map set!-exp
-                                                              (map free-variable syms)
-                                                              (map free-variable temp-vars))
+                                                                      (map free-variable syms)
+                                                                      (map free-variable temp-vars))
                                                                  bodies)))))))
-
+           (named-let-exp (name syms vals bodies)
+                          (let* [[name-val (lambda-exp (param-list syms)
+                                                       bodies)]]
+                            (syntax-expand (letrec-exp (cons name syms)
+                                                       (cons name-val vals)
+                                                       bodies))))
            (begin-exp (bodies)
                       (begin-exp (map syntax-expand bodies)))
            (cond-exp (conds cond-trues)
@@ -93,13 +115,9 @@
                         (if-else-exp (syntax-expand condition)
                                      (syntax-expand if-true)
                                      (syntax-expand if-false)))
-           (app-exp (operator operands)
-                    (app-exp (syntax-expand operator)
-                             (map syntax-expand operands)))
-           (vector-exp (datum)
-                       (vector-exp (map syntax-expand datum)))
-		   (define-exp (sym body)
-						(define-exp sym (syntax-expand body)))
+           (app-exp (operator operands) (app-exp (syntax-expand operator) (map syntax-expand operands)))
+           (vector-exp (datum) (vector-exp (map syntax-expand datum)))
+           (define-exp (sym body) (define-exp sym (syntax-expand body)))
            (else expr))))
 
 

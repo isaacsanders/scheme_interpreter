@@ -71,6 +71,11 @@
                    (syms (list-of symbol?))
                    (vals (list-of expression?))
                    (bodies (list-of expression?)))
+                 (named-let-exp
+                   (name symbol?)
+                   (syms (list-of symbol?))
+                   (vals (list-of expression?))
+                   (bodies (list-of expression?)))
                  (cond-exp
                    (conds (list-of expression?))
                    (cond-trues (list-of (list-of expression?))))
@@ -187,6 +192,18 @@
                              (cadr datum))
                         (map parse-expression (cddr datum)))))))
 
+(define parse-let
+  (lambda (datum)
+    (cond
+      ((symbol? (cadr datum))
+       (named-let-exp (cadr datum)
+                      (map car (caddr datum))
+                      (map (compose parse-expression cadr) (caddr datum))
+                      (map parse-expression (cdddr datum))))
+      (else (let-exp (map car (cadr datum))
+                     (map (compose parse-expression cadr) (cadr datum))
+                     (map parse-expression (cddr datum)))))))
+
 (define parse-expression
   (lambda (datum)
     (cond [(symbol? datum) (free-variable datum)]
@@ -206,9 +223,7 @@
                                                 (map (compose cdr (partial map parse-expression)) (cdr datum)))]
              [(eq? (car datum) 'and) (and-exp (map parse-expression (cdr datum)))]
              [(eq? (car datum) 'or) (or-exp (map parse-expression (cdr datum)))]
-             [(eq? (car datum) 'let) (let-exp (map car (cadr datum))
-                                              (map (compose parse-expression cadr) (cadr datum))
-                                              (map parse-expression (cddr datum)))]
+             [(eq? (car datum) 'let) (parse-let datum)]
              [(eq? (car datum) 'let*) (let*-exp (map car (cadr datum))
                                                 (map (compose parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
