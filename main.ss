@@ -32,7 +32,7 @@
                (syntax-expand
                  (parse-expression
                    (read))))
-             (list)))
+             (lexically-addressed-environment (list))))
     (newline)
     (rep)))
 
