@@ -86,9 +86,9 @@
                    (actions (list-of expression?)))
                  (vector-exp
                    (datum (list-of expression?)))
-				 (define-exp
-				   (sym symbol?)
-				   (body expression?)))
+                 (define-exp
+                   (name symbol?)
+                   (value expression?)))
 
 (define report-parse-error
   (lambda (msg datum)
@@ -207,7 +207,7 @@
           [(list? datum)
            (cond
              [(null? datum) (app-exp (free-variable 'list) '())]
-			 [(eq? (car datum) 'define) (define-exp (cadr datum) (parse-expression (caddr datum)))]
+             [(eq? (car datum) 'define) (define-exp (cadr datum) (parse-expression (caddr datum)))]
              [(eq? (car datum) 'case) (case-exp ((compose-parse-expression cadr) datum)
                                                 (map (compose quote-exp car) (cddr datum))
                                                 (map (compose-parse-expression cadr) (cddr datum)))]
