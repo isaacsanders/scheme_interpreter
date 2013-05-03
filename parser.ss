@@ -67,10 +67,15 @@
                    (syms (list-of symbol?))
                    (vals (list-of expression?))
                    (bodies (list-of expression?)))
-				 (letrec-exp
-				   (syms (list-of symbol?))
-				   (vals (list-of expression?))
-				   (bodies (list-of expression?)))
+                 (letrec-exp
+                   (syms (list-of symbol?))
+                   (vals (list-of expression?))
+                   (bodies (list-of expression?)))
+                 (named-let-exp
+                   (name symbol?)
+                   (syms (list-of symbol?))
+                   (vals (list-of expression?))
+                   (bodies (list-of expression?)))
                  (cond-exp
                    (conds (list-of expression?))
                    (cond-trues (list-of (list-of expression?))))
@@ -211,6 +216,21 @@
 				  [else (parse-expression datum)])
 		(parse-expression datum))))
 						
+(define parse-let
+  (lambda (datum)
+    (cond
+      ((symbol? (cadr datum))
+       (named-let-exp (cadr datum)
+                      (map car (caddr datum))
+                      (map (compose parse-expression cadr) (caddr datum))
+                      (map parse-expression (cdddr datum))))
+      (else (let-exp (map car (cadr datum))
+                                              (map (compose parse-expression cadr) (cadr datum))
+												(let ([bodies (map parse-expression (cddr datum))])
+													(if (define-look-ahead bodies)
+														(list (compose-define-to-expand-exp bodies))
+														bodies)))))))
+
 (define parse-expression
   (lambda (datum)
     (cond [(symbol? datum) (free-variable datum)]
@@ -230,12 +250,7 @@
                                                 (map (compose cdr (partial map parse-expression)) (cdr datum)))]
              [(eq? (car datum) 'and) (and-exp (map parse-expression (cdr datum)))]
              [(eq? (car datum) 'or) (or-exp (map parse-expression (cdr datum)))]
-             [(eq? (car datum) 'let) (let-exp (map car (cadr datum))
-                                              (map (compose parse-expression cadr) (cadr datum))
-												(let ([bodies (map parse-expression (cddr datum))])
-													(if (define-look-ahead bodies)
-														(list (compose-define-to-expand-exp bodies))
-														bodies)))]
+             [(eq? (car datum) 'let) (parse-let datum)]
              [(eq? (car datum) 'let*) (let*-exp (map car (cadr datum))
                                                 (map (compose parse-expression cadr) (cadr datum))
                                                 (map parse-expression (cddr datum)))]
