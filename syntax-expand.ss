@@ -33,14 +33,12 @@
 
 (define expand-letrec-exp
   (lambda (syms vals bodies)
-    (let [[temp-vars (syntax->datum (generate-temporaries syms))]]
-      (let-exp syms (make-list (length syms)
-                               (app-exp (free-variable 'nil) (list)))
-               (list (let-exp temp-vars vals
-                              (list (begin-exp (append (map set!-exp
+    (let-exp syms (make-list (length syms)
+                             (app-exp (free-variable 'nil) (list)))
+             (list (begin-exp (append (map set!-exp
                                            (map free-variable syms)
-                                           (map free-variable temp-vars))
-                                      bodies)))))))))
+                                           vals)
+                                      bodies))))))
 
 (define expand-named-let-exp
   (lambda (name syms vals bodies)
@@ -73,9 +71,15 @@
   (lambda (bodies)
     (if (null? bodies)
       (constant-exp (boolean-literal #t))
-      (let [[first (car bodies)]]
+      (let [[first (car bodies)]
+            [syms (syntax->datum (generate-temporaries '(a)))]]
         (cond
-          ((null? (cdr bodies)) (if-else-exp first first (constant-exp (boolean-literal #f))))
+          ((null? (cdr bodies)) 
+           (let-exp syms
+                    (list first)
+                    (list (if-else-exp (free-variable (car syms))
+                                       (free-variable (car syms))
+                                       (constant-exp (boolean-literal #f))))))
           (else (if-else-exp first
                              (and-exp (cdr bodies))
                              (constant-exp (boolean-literal #f)))))))))
@@ -84,17 +88,15 @@
   (lambda (bodies)
     (if (null? bodies)
       (constant-exp (boolean-literal #f))
-      (let [[first (car bodies)]]
-        (cond
-          ((null? (cdr bodies)) (if-else-exp first
-                                             first
-                                             (constant-exp (boolean-literal #f))))
-          (else (let [[syms (syntax->datum (generate-temporaries '(a)))]]
-                  (let-exp syms
-                           (list first)
-                           (list (if-else-exp (free-variable (car syms))
-                                              (free-variable (car syms))
-                                              (or-exp (cdr bodies))))))))))))
+      (let [[first (car bodies)]
+            [syms (syntax->datum (generate-temporaries '(a)))]]
+        (let-exp syms
+                 (list first)
+                 (list (if-else-exp (free-variable (car syms))
+                                    (free-variable (car syms))
+                                    (cond
+                                      ((null? (cdr bodies)) (constant-exp (boolean-literal #f)))
+                                      (else (or-exp (cdr bodies)))))))))))
 
 (define expand-if-exp
   (lambda (condition if-true)
@@ -122,10 +124,12 @@
            (app-exp (operator operands)               (app-exp (syntax-expand operator) (map syntax-expand operands)))
            (vector-exp (datum)                        (vector-exp (map syntax-expand datum)))
            (define-exp (sym body)                     (define-exp sym (syntax-expand body)))
-		   (global-define-exp (sym body)
-						(global-define-exp sym (syntax-expand body)))
-		   (define-to-expand-exp (names values following-bodies)
-						(syntax-expand (letrec-exp names values following-bodies)))
+           (set!-exp (variable value)                 (set!-exp variable (syntax-expand value)))
+           (global-define-exp (sym body)
+                              (global-define-exp sym (syntax-expand body)))
+           (define-to-expand-exp (names values following-bodies)
+                                 (syntax-expand (letrec-exp names values following-bodies)))
+
            (let-exp (syms vals bodies)            (syntax-expand (expand-let-exp syms vals bodies)))
            (let*-exp (syms vals bodies)           (syntax-expand (expand-let*-exp syms vals bodies)))
            (letrec-exp (syms vals bodies)         (syntax-expand (expand-letrec-exp syms vals bodies)))
@@ -137,6 +141,7 @@
            (else expr))))
 
 (define create-define-expression-list
-	(lambda (syms vals bodies)
-		(if (null? syms) bodies
-			(cons (define-exp (car syms) (syntax-expand (car vals))) (create-define-expression-list (cdr syms) (cdr vals) bodies))))) 
+  (lambda (syms vals bodies)
+    (if (null? syms) bodies
+      (cons (define-exp (car syms) (syntax-expand (car vals)))
+            (create-define-expression-list (cdr syms) (cdr vals) bodies)))))

@@ -102,16 +102,16 @@
                    (actions (list-of expression?)))
                  (vector-exp
                    (datum (list-of expression?)))
-				 (define-exp
-					(name symbol?)
-				    (value expression?))
+                 (define-exp
+                   (name symbol?)
+                   (value expression?))
                  (define-to-expand-exp
                    (names (list-of symbol?))
                    (values (list-of expression?))
-				   (following-bodies (list-of expression?)))
-				 (global-define-exp
-				   (name symbol?)
-				   (value expression?)))
+                   (following-bodies (list-of expression?)))
+                 (global-define-exp
+                   (name symbol?)
+                   (value expression?)))
 
 (define report-parse-error
   (lambda (msg datum)
@@ -211,11 +211,11 @@
 (define parse-top-expression
   (lambda (datum)
     (if (list? datum)
-			(cond [(eq? (car datum) 'define) (global-define-exp (cadr datum) (parse-expression (caddr datum)))]
-				  [(eq? (car datum) 'begin) (begin-exp (map parse-top-expression (cdr datum)))]
-				  [else (parse-expression datum)])
-		(parse-expression datum))))
-						
+      (cond [(eq? (car datum) 'define) (global-define-exp (cadr datum) (parse-expression (caddr datum)))]
+            [(eq? (car datum) 'begin) (begin-exp (map parse-top-expression (cdr datum)))]
+          [else (parse-expression datum)])
+      (parse-expression datum))))
+
 (define parse-let
   (lambda (datum)
     (cond
@@ -225,11 +225,11 @@
                       (map (compose parse-expression cadr) (caddr datum))
                       (map parse-expression (cdddr datum))))
       (else (let-exp (map car (cadr datum))
-                                              (map (compose parse-expression cadr) (cadr datum))
-												(let ([bodies (map parse-expression (cddr datum))])
-													(if (define-look-ahead bodies)
-														(list (compose-define-to-expand-exp bodies))
-														bodies)))))))
+                     (map (compose parse-expression cadr) (cadr datum))
+                     (let ([bodies (map parse-expression (cddr datum))])
+                       (if (define-look-ahead bodies)
+                         (list (compose-define-to-expand-exp bodies))
+                         bodies)))))))
 
 (define parse-expression
   (lambda (datum)

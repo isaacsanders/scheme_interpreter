@@ -76,7 +76,7 @@
                             (let ([procedure (L operator env)]
                                   [args (map (L-env env) operands)])
                               (app-exp procedure args))]
-				   [global-define-exp (name value)
+                   [global-define-exp (name value)
                                (global-define-exp name (L value env))]
                    [set!-exp (variable value)
                              (set!-exp (let* [[name (cadr variable)]
