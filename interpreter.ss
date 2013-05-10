@@ -1,6 +1,7 @@
 (load "env.ss")
 (load "parser.ss")
 (load "syntax-expand.ss")
+(load "cont.ss")
 
 (define eval-one-exp
   (lambda (exp)
@@ -26,8 +27,7 @@
            [lambda-exp (formals bodies)
                        (make-closure formals bodies env)]
            [if-exp (condition if-true)
-                   (if (eval-expression condition env)
-                     (eval-expression if-true env))]
+					(eval-expression condition (if-cont if-true cont env) env)]
            [if-else-exp (condition if-true if-false)
                         (if (eval-expression condition env)
                           (eval-expression if-true env)
