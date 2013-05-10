@@ -23,12 +23,6 @@
                                       [string-literal (val) val]
                                       [number-literal (val) val])]
            [quote-exp (datum) datum]
-           [global-define-exp (sym body)
-                              (set! *global-env* (cons (cons sym
-                                                             (eval-expression body
-                                                                              env
-                                                                              ))
-                                                       *global-env*))]
            [lambda-exp (formals bodies)
                        (make-closure formals bodies env)]
            [if-exp (condition if-true)
@@ -38,43 +32,49 @@
                         (if (eval-expression condition env)
                           (eval-expression if-true env)
                           (eval-expression if-false env))]
-           [vector-exp (datum)
-                       (list->vector (map (eval-expression-env env) datum))]
-           [while-exp (test-exp bodies)
-                      (let loop [[test (eval-expression test-exp env)]]
-                        (if test
-                          (begin (eval-expression (begin-exp bodies) env)
-                                 (loop (eval-expression test-exp env)))))]
-           [begin-exp (bodies) (cond
-                                 ((null? (cdr bodies)) (eval-expression (car bodies) env))
-                                 (else (begin (eval-expression (car bodies) env)
-                                              (eval-expression (begin-exp (cdr bodies)) env))))]
-           [set!-exp (variable value)
-                     (cases expression variable
-                            (lexical-addressed-variable (depth position)
-                                                        (set-car! (list-tail
-                                                                    (car
-                                                                      (list-tail (cadr env) depth))
-                                                                    position)
-                                                                  (eval-expression value env)))
-                            (free-variable (name) (set! *global-env*
-                                                    (cons (cons name
-                                                                (eval-expression value env))
-                                                          *global-env*)))
-                            (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
-           [define-exp (sym body)
-                       (cases expression sym
-                              (lexical-addressed-variable (depth position)
-                                                          (set-car! (list-tail
-                                                                      (car
-                                                                        (list-tail (cadr env) depth))
-                                                                      position)
-                                                                    (eval-expression body env)))
-                              (free-variable (name) (set! *global-env*
-                                                      (cons (cons name
-                                                                  (eval-expression body env))
-                                                            *global-env*)))
-                              (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
+           ; [global-define-exp (sym body)
+           ;                    (set! *global-env* (cons (cons sym
+           ;                                                   (eval-expression body
+           ;                                                                    env
+           ;                                                                    ))
+           ;                                             *global-env*))]
+           ; [vector-exp (datum)
+           ;             (list->vector (map (eval-expression-env env) datum))]
+           ; [while-exp (test-exp bodies)
+           ;            (let loop [[test (eval-expression test-exp env)]]
+           ;              (if test
+           ;                (begin (eval-expression (begin-exp bodies) env)
+           ;                       (loop (eval-expression test-exp env)))))]
+           ; [begin-exp (bodies) (cond
+           ;                       ((null? (cdr bodies)) (eval-expression (car bodies) env))
+           ;                       (else (begin (eval-expression (car bodies) env)
+           ;                                    (eval-expression (begin-exp (cdr bodies)) env))))]
+           ; [set!-exp (variable value)
+           ;           (cases expression variable
+           ;                  (lexical-addressed-variable (depth position)
+           ;                                              (set-car! (list-tail
+           ;                                                          (car
+           ;                                                            (list-tail (cadr env) depth))
+           ;                                                          position)
+           ;                                                        (eval-expression value env)))
+           ;                  (free-variable (name) (set! *global-env*
+           ;                                          (cons (cons name
+           ;                                                      (eval-expression value env))
+           ;                                                *global-env*)))
+           ;                  (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
+           ; [define-exp (sym body)
+           ;             (cases expression sym
+           ;                    (lexical-addressed-variable (depth position)
+           ;                                                (set-car! (list-tail
+           ;                                                            (car
+           ;                                                              (list-tail (cadr env) depth))
+           ;                                                            position)
+           ;                                                          (eval-expression body env)))
+           ;                    (free-variable (name) (set! *global-env*
+           ;                                            (cons (cons name
+           ;                                                        (eval-expression body env))
+           ;                                                  *global-env*)))
+           ;                    (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [app-exp (operator operands)
                     (let ([procedure (eval-expression operator env)]
                           [args (map (eval-expression-env env) operands)])
