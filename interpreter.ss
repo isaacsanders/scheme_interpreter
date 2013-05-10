@@ -34,6 +34,10 @@
                           (eval-expression if-false env))]
            [vector-exp (datum)
                        (list->vector (map (eval-expression-env env) datum))]
+           [begin-exp (bodies) (cond
+                                 ((null? (cdr bodies)) (eval-expression (car bodies) env))
+                                 (else (begin (eval-expression (car bodies) env)
+                                              (eval-expression (begin-exp (cdr bodies)) env))))]
            ; [global-define-exp (sym body)
            ;                    (set! *global-env* (cons (cons sym
            ;                                                   (eval-expression body
@@ -45,10 +49,6 @@
            ;              (if test
            ;                (begin (eval-expression (begin-exp bodies) env)
            ;                       (loop (eval-expression test-exp env)))))]
-           ; [begin-exp (bodies) (cond
-           ;                       ((null? (cdr bodies)) (eval-expression (car bodies) env))
-           ;                       (else (begin (eval-expression (car bodies) env)
-           ;                                    (eval-expression (begin-exp (cdr bodies)) env))))]
            ; [set!-exp (variable value)
            ;           (cases expression variable
            ;                  (lexical-addressed-variable (depth position)
