@@ -6,6 +6,11 @@
   (if-cont
    (true-exp expression?)
    (cont continuation?)
+   (env list?))
+  (if-else-cont
+   (true-exp expression?)
+   (false-exp expression?)
+   (cont continuation?)
    (env list?)))
 
 
@@ -16,4 +21,8 @@
 		      (pretty-print val)]
 	   [if-cont (if-true-exp next-cont env)
 		    (if val
-			(eval-expression if-true-exp next-cont env))])))
+			(eval-expression if-true-exp next-cont env))]
+	   [if-else-cont (if-true-exp if-false-exp next-cont env)
+		    (if val
+			(eval-expression if-true-exp next-cont env)
+			(eval-expression if-false-exp next-cont env))])))

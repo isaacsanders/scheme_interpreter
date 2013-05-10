@@ -19,19 +19,17 @@
                                    (eopl:error 'eval-expression "Variable ~s not bound" id)))]
            [lexical-addressed-variable (depth position) (apply-env env depth position)]
            [constant-exp (val) (cases constant val
-                                      [boolean-literal (val) val]
-                                      [character-literal (val) val]
-                                      [string-literal (val) val]
-                                      [number-literal (val) val])]
+                                      [boolean-literal (val) (apply-cont cont val)]
+                                      [character-literal (val) (apply-cont cont val)]
+                                      [string-literal (val) (apply-cont cont val)]
+                                      [number-literal (val) (apply-cont cont val)])]
            [quote-exp (datum) datum]
            [lambda-exp (formals bodies)
                        (make-closure formals bodies env)]
            [if-exp (condition if-true)
 					(eval-expression condition (if-cont if-true cont env) env)]
            [if-else-exp (condition if-true if-false)
-                        (if (eval-expression condition env)
-                          (eval-expression if-true env)
-                          (eval-expression if-false env))]
+                    (eval-expression condition (if-else-cont if-true if-false env) env)]
            [vector-exp (datum)
                        (list->vector (map (eval-expression-env env) datum))]
            [begin-exp (bodies) (cond
