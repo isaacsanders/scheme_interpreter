@@ -10,7 +10,7 @@
       result)))
 
 (define eval-expression
-  (lambda (expr env)
+  (lambda (expr cont env)
     (cases expression expr
            [free-variable (id) (let* [[found (assq id *global-env*)]]
                                  (if found
@@ -38,6 +38,10 @@
                                  ((null? (cdr bodies)) (eval-expression (car bodies) env))
                                  (else (begin (eval-expression (car bodies) env)
                                               (eval-expression (begin-exp (cdr bodies)) env))))]
+           [app-exp (operator operands)
+                    (let ([procedure (eval-expression operator env)]
+                          [args (map (eval-expression-env env) operands)])
+                      (apply-proc procedure args))]
            ; [global-define-exp (sym body)
            ;                    (set! *global-env* (cons (cons sym
            ;                                                   (eval-expression body
@@ -75,10 +79,6 @@
            ;                                                        (eval-expression body env))
            ;                                                  *global-env*)))
            ;                    (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
-           [app-exp (operator operands)
-                    (let ([procedure (eval-expression operator env)]
-                          [args (map (eval-expression-env env) operands)])
-                      (apply-proc procedure args))]
            [else (eopl:error 'eval-expression "Evaluation error with: ~s" expr)])))
 
 (define eval-expression-env
