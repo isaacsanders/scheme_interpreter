@@ -13,29 +13,30 @@
 (define eval-expression
   (lambda (expr cont env)
     (cases expression expr
-           [free-variable (id) (let* [[found (assq id *global-env*)]]
+           [free-variable (id) (let [[found (assq id *global-env*)]]
                                  (if found
-                                   (cdr found)
+                                   (apply-cont cont (cdr found))
                                    (eopl:error 'eval-expression "Variable ~s not bound" id)))]
-           [lexical-addressed-variable (depth position) (apply-env env depth position)]
+           [lexical-addressed-variable (depth position) (apply-cont cont (apply-env env depth position))]
            [constant-exp (val) (cases constant val
-                                      [boolean-literal (val) (apply-cont cont val)]
+                                      [boolean-literal   (val) (apply-cont cont val)]
                                       [character-literal (val) (apply-cont cont val)]
-                                      [string-literal (val) (apply-cont cont val)]
-                                      [number-literal (val) (apply-cont cont val)])]
-           [quote-exp (datum) datum]
+                                      [string-literal    (val) (apply-cont cont val)]
+                                      [number-literal    (val) (apply-cont cont val)])]
+           [quote-exp (datum) (apply-cont cont datum)]
            [lambda-exp (formals bodies)
-                       (make-closure formals bodies env)]
+                       (apply-cont cont (make-closure formals bodies env))]
            [if-exp (condition if-true)
-					(eval-expression condition (if-cont if-true cont env) env)]
+                   (eval-expression condition (if-cont if-true cont env) env)]
            [if-else-exp (condition if-true if-false)
-                    (eval-expression condition (if-else-cont if-true if-false env) env)]
+                        (eval-expression condition (if-else-cont if-true if-false env) env)]
            [vector-exp (datum)
-                       (list->vector (map (eval-expression-env env) datum))]
+                       (apply-cont cont (list->vector (map (lambda (data) (eval-expression data cont env))
+                                                           datum)))]
            [begin-exp (bodies) (cond
-                                 ((null? (cdr bodies)) (eval-expression (car bodies) env))
-                                 (else (begin (eval-expression (car bodies) env)
-                                              (eval-expression (begin-exp (cdr bodies)) env))))]
+                                 ((null? bodies) (apply-cont cont (halt-cont)))
+                                 (else (eval-expression (begin-exp (cdr bodies))
+                                                        (begin-cont (car bodies) env cont) env)]
            [app-exp (operator operands)
                     (let ([procedure (eval-expression operator env)]
                           [args (map (eval-expression-env env) operands)])
