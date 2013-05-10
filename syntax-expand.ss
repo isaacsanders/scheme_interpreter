@@ -107,12 +107,15 @@
   (lambda (test-val vals actions)
     (let [[first-case (car vals)]
           [first-action (car actions)]]
-      (if (equal? first-case (quote-exp 'else))
-        first-action
-        (if-else-exp (app-exp (free-variable 'member)
-                              (list test-val first-case))
-                     first-action
-                     (case-exp test-val (cdr vals) (cdr actions)))))))
+      (cond
+        ((equal? first-case (quote-exp 'else)) first-action)
+        ((null? (cdr vals)) (if-exp (app-exp (free-variable 'member)
+                                    (list test-val first-case))
+                                    first-action))
+        (else (if-else-exp (app-exp (free-variable 'member)
+                                    (list test-val first-case))
+                           first-action
+                           (case-exp test-val (cdr vals) (cdr actions))))))))
 
 (define syntax-expand
   (lambda (expr)
@@ -121,15 +124,13 @@
            (if-exp (condition if-true)                (expand-if-exp condition if-true))
            (begin-exp (bodies)                        (begin-exp (map syntax-expand bodies)))
            (if-else-exp (condition if-true if-false)  (expand-if-else-exp condition if-true if-false))
-           (app-exp (operator operands)               (app-exp (syntax-expand operator) (map syntax-expand operands)))
+           (app-exp (operator operands)               (app-exp (syntax-expand operator)
+                                                               (map syntax-expand operands)))
            (vector-exp (datum)                        (vector-exp (map syntax-expand datum)))
            (define-exp (sym body)                     (define-exp sym (syntax-expand body)))
            (set!-exp (variable value)                 (set!-exp variable (syntax-expand value)))
-           (global-define-exp (sym body)
-                              (global-define-exp sym (syntax-expand body)))
-           (define-to-expand-exp (names values following-bodies)
-                                 (syntax-expand (letrec-exp names values following-bodies)))
-
+           (global-define-exp (sym body) (global-define-exp sym (syntax-expand body)))
+           (define-to-expand-exp (names values following-bodies) (syntax-expand (letrec-exp names values following-bodies)))
            (let-exp (syms vals bodies)            (syntax-expand (expand-let-exp syms vals bodies)))
            (let*-exp (syms vals bodies)           (syntax-expand (expand-let*-exp syms vals bodies)))
            (letrec-exp (syms vals bodies)         (syntax-expand (expand-letrec-exp syms vals bodies)))

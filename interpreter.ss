@@ -153,6 +153,12 @@
       [(member) (apply member args)]
       [(nil)    (apply nil args)]
       [(max)    (apply max args)]
+      [(display) (apply display args)]
+      [(load)   (load-file (car args))]
+
+      [(printf) (apply printf args)]
+      [(pretty-print) (apply pretty-print args)]
+      [(break) (apply break args)]
 
       [else (eopl:error 'apply-primitive-proc "invalid primitive ~s" id)])))
 
@@ -215,6 +221,11 @@
     member
     nil
     max
+    display
+    load
+    printf
+    pretty-print
+    break
     ))
 
 (define *global-env*
