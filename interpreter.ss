@@ -32,14 +32,14 @@
                         (if (eval-expression condition env)
                           (eval-expression if-true env)
                           (eval-expression if-false env))]
+           [vector-exp (datum)
+                       (list->vector (map (eval-expression-env env) datum))]
            ; [global-define-exp (sym body)
            ;                    (set! *global-env* (cons (cons sym
            ;                                                   (eval-expression body
            ;                                                                    env
            ;                                                                    ))
            ;                                             *global-env*))]
-           ; [vector-exp (datum)
-           ;             (list->vector (map (eval-expression-env env) datum))]
            ; [while-exp (test-exp bodies)
            ;            (let loop [[test (eval-expression test-exp env)]]
            ;              (if test
