@@ -7,7 +7,8 @@
   (lambda (exp)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-top-expression exp)))]
            [initial-environment (lexically-addressed-environment (list))]
-           [result (eval-expression parse-tree initial-environment)])
+		   [cont (halt-cont)]
+           [result (eval-expression parse-tree cont initial-environment)])
       result)))
 
 (define eval-expression
@@ -36,6 +37,7 @@
                                  ((null? (cdr bodies)) (eval-expression (car bodies) env))
                                  (else (begin (eval-expression (car bodies) env)
                                               (eval-expression (begin-exp (cdr bodies)) env))))]
+								 (eval-expression (car bodies) (eval-exps-cont (beh
            [app-exp (operator operands)
                     (let ([procedure (eval-expression operator env)]
                           [args (map (eval-expression-env env) operands)])

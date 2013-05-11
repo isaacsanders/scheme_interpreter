@@ -19,6 +19,9 @@
     (cases continuation cont
 	   [halt-cont ()
 		      (pretty-print val)]
+	   [rep-cont ()
+			  (pretty-print val)
+			  (rep)]
 	   [if-cont (if-true-exp next-cont env)
 		    (if val
 			(eval-expression if-true-exp next-cont env))]
