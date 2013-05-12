@@ -39,9 +39,9 @@
 ;                                 (else (begin (eval-expression (car bodies) env)
 ;                                            (eval-expression (begin-exp (cdr bodies)) env))))]
 ;								 (eval-expression (car bodies) (eval-exps-cont (beh
-                                 ((null? bodies) (apply-cont cont '()))
-                                 (else (eval-expression (begin-exp (cdr bodies))
-                                                        (begin-cont (car bodies) env cont) env)))]
+                                 ((null? (cdr bodies)) (eval-expression (car bodies) cont env))
+                                 (else (eval-expression (car bodies)
+                                                        (begin-cont (begin-exp (cdr bodies)) env cont) env)))]
 ;          [app-exp (operator operands)
 ;                    (let ([procedure (eval-expression operator env)]
 ;                          [args (map (eval-expression-env env) operands)])
@@ -245,7 +245,7 @@
   (lambda (proc args cont)
     (if (procedure? proc)
       (cases procedure proc
-             [primitive (id) (apply-primitive-proc id args)]
+             [primitive (id) (apply-cont cont (apply-primitive-proc id args))]
              [closure (frmls bodies env)
                       (cases formals frmls
                              [unary (param)
