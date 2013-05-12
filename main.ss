@@ -30,21 +30,33 @@
 ; <application>                  ::= (<expression> <expression>*)
 
 (load "interpreter.ss")
+(load "cont.ss")
 (load "functional-utils.ss")
 
 (define (rl) (load "main.ss"))
 
-(define (rep)
-  (begin
-    (display "--> ")
-    (write (eval-expression
-             (lexical-address
-               (syntax-expand
-                 (parse-top-expression
-                   (read))))
-             (lexically-addressed-environment (list))))
-    (newline)
-    (rep)))
+;(define (rep)
+;  (begin
+;    (display "--> ")
+;    (write (eval-expression
+;             (lexical-address
+;               (syntax-expand
+;                 (parse-top-expression
+;                   (read))))
+;             (lexically-addressed-environment (list))))
+;    (newline)
+;    (rep)))
+	
+(define rep
+	(lambda ()
+		(display "--> ")
+			(eval-expression
+				(lexical-address
+					(syntax-expand
+					(parse-top-expression
+						(read))))
+					(rep-cont)
+				(lexically-addressed-environment (list)))))
 
 (define-syntax return-first
   (syntax-rules ()

@@ -66,16 +66,15 @@
                                 (if-else-exp (L condition env)
                                              (L if-true env)
                                              (L if-false env))]
-                   [vector-exp (datum)
-                               (vector-exp (map (L-env env) datum))]
+;                   [vector-exp (datum)
+;                              (vector-exp (map (L-env env) datum))]
                    [begin-exp (bodies) (begin-exp (map (L-env env) bodies))]
                    [while-exp (test-exp bodies)
                               (while-exp (L test-exp env)
                                          (map (L-env env) bodies))]
-                   [app-exp (operator operands)
-                            (let ([procedure (L operator env)]
-                                  [args (map (L-env env) operands)])
-                              (app-exp procedure args))]
+                   [app-exp (exps)
+                            (let ([args (map (L-env env) exps)])
+                              (app-exp args))]
                    [global-define-exp (name value)
                                (global-define-exp name (L value env))]
                    [set!-exp (variable value)
@@ -85,5 +84,6 @@
                                            (cdr found)
                                            (free-variable name)))
                                        (L value env))]
-                   [else expr]))))
+                   [else expr]
+				   ))))
       (L expr '()))))

@@ -124,8 +124,8 @@
            (if-exp (condition if-true)                (expand-if-exp condition if-true))
            (begin-exp (bodies)                        (begin-exp (map syntax-expand bodies)))
            (if-else-exp (condition if-true if-false)  (expand-if-else-exp condition if-true if-false))
-           (app-exp (operator operands)               (app-exp (syntax-expand operator)
-                                                               (map syntax-expand operands)))
+           (app-exp (exps)               (app-exp 
+                                                               (map syntax-expand exps)))
            (vector-exp (datum)                        (vector-exp (map syntax-expand datum)))
            (define-exp (sym body)                     (define-exp sym (syntax-expand body)))
            (set!-exp (variable value)                 (set!-exp variable (syntax-expand value)))

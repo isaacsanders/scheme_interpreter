@@ -46,9 +46,11 @@
                    (bodies (list-of expression?)))
                  (begin-exp
                    (bodies (list-of expression?)))
-                 (app-exp
-                   (operator expression?)
-                   (operands (list-of expression?)))
+;                 (app-exp
+;                   (operator expression?)
+;                   (operands (list-of expression?)))
+				 (app-exp
+					(exps (list-of expression?)))
                  (let-exp
                    (syms (list-of symbol?))
                    (vals (list-of expression?))
@@ -237,7 +239,7 @@
           [(vector? datum) (vector-exp (map parse-expression (vector->list datum)))]
           [(list? datum)
            (cond
-             [(null? datum) (app-exp (free-variable 'list) '())]
+             [(null? datum) (app-exp (free-variable 'list))]
              [(eq? (car datum) 'define) (define-exp (cadr datum) (parse-expression (caddr datum)))]
              [(eq? (car datum) 'case) (case-exp (parse-expression (cadr datum))
                                                 (map (compose quote-exp car) (cddr datum))
@@ -260,8 +262,9 @@
              [(eq? (car datum) 'begin) (begin-exp (map parse-expression (cdr datum)))]
              [(and (pair? (car datum))
                    (eq? (caar datum) 'quote)) (quote-exp (car datum))]
-             [else (app-exp (parse-expression (car datum))
-                            (map parse-expression (cdr datum)))])]
+;             [else (app-exp (parse-expression (car datum))
+;                            (map parse-expression (cdr datum)))])]
+			 [else (app-exp (map parse-expression datum))])]
           [else (report-parse-error "Invalid concrete syntac ~s" datum)])))
 
 (define define-look-ahead
