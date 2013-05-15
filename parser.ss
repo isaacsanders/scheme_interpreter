@@ -236,7 +236,7 @@
           [(list? datum)
            (cond
              [(null? datum) (app-exp (free-variable 'list))]
-             [(eq? (car datum) 'define) (define-exp (cadr datum) (parse-expression (caddr datum)))]
+             [(eq? (car datum) 'define) (parse-set! datum)]
              [(eq? (car datum) 'case) (case-exp (parse-expression (cadr datum))
                                                 (map (compose quote-exp car) (cddr datum))
                                                 (map (compose parse-expression cadr) (cddr datum)))]

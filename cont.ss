@@ -37,6 +37,10 @@
                    (depth number?)
                    (position number?)
                    (env scheme-value?)
+                   (cont continuation?))
+                 (test-while-cont
+                   (test-exp expression?)
+                   (env scheme-value?)
                    (cont continuation?)))
 
 
@@ -65,9 +69,11 @@
            [if-else-cont (if-true-exp if-false-exp next-cont env)
                          (let [[expr (if val if-true-exp if-false-exp)]]
                            (eval-expression expr next-cont env))]
+		   [test-while-cont (test-exp env cont)
+					(eval-expression test-exp cont env)]
            [while-cont (test-exp bodies env cont)
                        (if val
-                         (eval-expression (begin-exp bodies) (while-cont test-exp bodies env cont) env)
+                         (eval-expression (begin-exp bodies) (test-while-cont test-exp env (while-cont test-exp bodies env cont)) env)
                          (apply-cont cont (void)))]
            [define-cont (sym cont)
                         (set! *global-env* (cons (cons sym val) *global-env*))
