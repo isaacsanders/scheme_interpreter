@@ -44,4 +44,4 @@
                                parse-top-expression)
                       (read))
                      (rep-cont)
-                     (list))))
+                     (lexically-addressed-environment (list)))))

@@ -7,9 +7,8 @@
   (lambda (expr)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-top-expression expr)))]
            [initial-environment (lexically-addressed-environment (list))]
-           [cont (halt-cont)]
-           [result (eval-expression parse-tree cont initial-environment)])
-      result)))
+           [cont (halt-cont)])
+      (eval-expression parse-tree cont initial-environment))))
 
 (define eval-expression
   (lambda (expr cont env)
@@ -54,11 +53,12 @@
            [set!-exp (variable value)
                      (cases expression variable
                             (lexical-addressed-variable (depth position)
-                                                        (set-car! (list-tail
-                                                                    (car
-                                                                      (list-tail (cadr env) depth))
-                                                                    position)
-                                                                  (eval-expression value cont env)))
+                                                        ;(set-car! (list-tail
+                                                         ;           (car
+                                                          ;            (list-tail (cadr env) depth))
+                                                           ;         position)
+                                                            ;      (eval-expression value cont env)))
+												    (eval-expression value (set-local-cont depth position env cont) env))
                             (free-variable (name) ;(set! *global-env*
                                                    ; (cons (cons name
                                                     ;            (eval-expression value cont env))
