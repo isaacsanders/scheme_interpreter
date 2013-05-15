@@ -40,10 +40,9 @@
            [vector-exp (datum)
                        (apply-cont cont (list->vector (eval-expressions datum (halt-cont) env)))]
            [begin-exp (bodies)
-                      (let loop [[bodies bodies] [cont cont]]
                         (cond
                           ((null? (cdr bodies)) (eval-expression (car bodies) cont env))
-                          (else (loop (cdr bodies) (begin-cont (car bodies) env cont)))))]
+                          (else (eval-expression (begin-exp (cdr bodies)) (begin-cont (car bodies) env cont) env)))]
            [while-exp (test-exp bodies)
 ;                      (let loop [[test (eval-expression test-exp cont env)]]
 ;                        (if test
