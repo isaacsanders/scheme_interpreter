@@ -12,7 +12,7 @@
 
 (define expand-let-exp
   (lambda (syms vals bodies)
-    (app-exp (lambda-exp (param-list syms) bodies) vals)))
+    (app-exp (cons (lambda-exp (param-list syms) bodies) vals))))
 
 (define expand-let*-exp
   (lambda (syms vals bodies)
