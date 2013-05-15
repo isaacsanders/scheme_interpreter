@@ -39,48 +39,30 @@
                         (eval-expression condition (if-else-cont if-true if-false cont env) env)]
            [vector-exp (datum)
                        (apply-cont cont (list->vector (eval-expressions datum (halt-cont) env)))]
-           [begin-exp (bodies)
-                        (cond
-                          ((null? (cdr bodies)) (eval-expression (car bodies) cont env))
-                          (else (eval-expression (begin-exp (cdr bodies)) (begin-cont (car bodies) env cont) env)))]
+
+           [begin-exp (bodies) (cond
+                                 ((null? (cdr bodies)) (eval-expression (car bodies) cont env))
+                                 (else (eval-expression (car bodies)
+                                                        (begin-cont (begin-exp (cdr bodies)) env cont) env)))]
            [while-exp (test-exp bodies)
-;                      (let loop [[test (eval-expression test-exp cont env)]]
-;                        (if test
-;                          (begin (eval-expression (begin-exp bodies) cont env)
-;                                 (loop (eval-expression test-exp cont env)))))]
-							(eval-expression test-exp (while-cont test-exp bodies env cont) env)]
+                      (eval-expression test-exp (while-cont test-exp bodies env cont) env)]
            [set!-exp (variable value)
                      (cases expression variable
                             (lexical-addressed-variable (depth position)
-                                                        ;(set-car! (list-tail
-                                                         ;           (car
-                                                          ;            (list-tail (cadr env) depth))
-                                                           ;         position)
-                                                            ;      (eval-expression value cont env)))
-												    (eval-expression value (set-local-cont depth position env cont) env))
-                            (free-variable (name) ;(set! *global-env*
-                                                   ; (cons (cons name
-                                                    ;            (eval-expression value cont env))
-                                                     ;     *global-env*)))
-													(eval-expression value (define-cont name cont) env)) 
+                                                        (eval-expression value (set-local-cont depth position env cont) env))
+                            (free-variable (name)
+                                           (eval-expression value (define-cont name cont) env))
                             (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [define-exp (sym body)
-		   				 (display "yo grandma?")
-
                        (cases expression sym
                               (lexical-addressed-variable (depth position)
-							  (display "yo mama")
                                                           (set-car! (list-tail
                                                                       (car
                                                                         (list-tail (cadr env) depth))
                                                                       position)
                                                                     (eval-expression body cont env)))
-                              (free-variable (name) ;(set! *global-env*
-                                                    ; (cons (cons name
-                                                   ;               (eval-expression body cont env))
-                                                    ;        *global-env*)))
-													(display "yo daddy")
-													(eval-expression body (define-cont name cont) env))
+                              (free-variable (name)
+                                             (eval-expression body (define-cont name cont) env))
                               (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [app-exp (exps)
                     (eval-expressions exps (proc-cont cont) env)]
@@ -91,7 +73,7 @@
     (closure formals bodies env)))
 
 (define apply-primitive-proc
-  (lambda (id args)
+  (lambda (id args cont)
     (case id
       [(+)     (apply +     args)]
       [(-)     (apply -     args)]
