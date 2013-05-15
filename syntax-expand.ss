@@ -12,7 +12,7 @@
 
 (define expand-let-exp
   (lambda (syms vals bodies)
-    (app-exp (lambda-exp (param-list syms) bodies) vals)))
+    (app-exp (cons (lambda-exp (param-list syms) bodies) vals))))
 
 (define expand-let*-exp
   (lambda (syms vals bodies)
@@ -20,21 +20,21 @@
       ((null? syms)
        (begin-exp bodies))
       ((null? (cdr syms))
-       (app-exp (lambda-exp
-                  (param-list (list (car syms)))
-                  bodies)
-                (list (car vals))))
-      (else (app-exp (lambda-exp
-                       (param-list (list (car syms)))
-                       (list (let*-exp (cdr syms)
-                                       (cdr vals)
-                                       bodies)))
-                     (list (car vals)))))))
+       (app-exp (cons (lambda-exp
+                        (param-list (list (car syms)))
+                        bodies)
+                      (list (car vals)))))
+      (else (app-exp (cons (lambda-exp
+                             (param-list (list (car syms)))
+                             (list (let*-exp (cdr syms)
+                                             (cdr vals)
+                                             bodies)))
+                           (list (car vals))))))))
 
 (define expand-letrec-exp
   (lambda (syms vals bodies)
     (let-exp syms (make-list (length syms)
-                             (app-exp (free-variable 'nil) (list)))
+                             (app-exp (list (free-variable 'nil))))
              (list (begin-exp (append (map set!-exp
                                            (map free-variable syms)
                                            vals)
@@ -109,11 +109,11 @@
           [first-action (car actions)]]
       (cond
         ((equal? first-case (quote-exp 'else)) first-action)
-        ((null? (cdr vals)) (if-exp (app-exp (free-variable 'member)
-                                    (list test-val first-case))
+        ((null? (cdr vals)) (if-exp (app-exp (cons (free-variable 'member)
+                                                   (list test-val first-case)))
                                     first-action))
-        (else (if-else-exp (app-exp (free-variable 'member)
-                                    (list test-val first-case))
+        (else (if-else-exp (app-exp (cons (free-variable 'member)
+                                          (list test-val first-case)))
                            first-action
                            (case-exp test-val (cdr vals) (cdr actions))))))))
 
@@ -124,8 +124,7 @@
            (if-exp (condition if-true)                (expand-if-exp condition if-true))
            (begin-exp (bodies)                        (begin-exp (map syntax-expand bodies)))
            (if-else-exp (condition if-true if-false)  (expand-if-else-exp condition if-true if-false))
-           (app-exp (exps)               (app-exp 
-                                                               (map syntax-expand exps)))
+           (app-exp (exps)                            (app-exp (map syntax-expand exps)))
            (vector-exp (datum)                        (vector-exp (map syntax-expand datum)))
            (define-exp (sym body)                     (define-exp sym (syntax-expand body)))
            (set!-exp (variable value)                 (set!-exp variable (syntax-expand value)))

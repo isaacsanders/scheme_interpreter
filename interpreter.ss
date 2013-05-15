@@ -6,7 +6,7 @@
 (define eval-one-exp
   (lambda (expr)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-top-expression expr)))]
-           [initial-environment (list)]
+           [initial-environment (lexically-addressed-environment (list))]
            [cont (halt-cont)]
            [result (eval-expression parse-tree cont initial-environment)])
       result)))
@@ -25,6 +25,13 @@
                                       [string-literal    (val) (apply-cont cont val)]
                                       [number-literal    (val) (apply-cont cont val)])]
            [quote-exp (datum) (apply-cont cont datum)]
+           [global-define-exp (sym body)
+                              (set! *global-env* (cons (cons sym
+                                                             (eval-expression body
+                                                                              cont
+                                                                              env
+                                                                              ))
+                                                       *global-env*))]
            [lambda-exp (formals bodies)
                        (apply-cont cont (make-closure formals bodies env))]
            [if-exp (condition if-true)
@@ -37,15 +44,6 @@
                                  ((null? (cdr bodies)) (eval-expression (car bodies) cont env))
                                  (else (eval-expression (car bodies)
                                                         (begin-cont (begin-exp (cdr bodies)) env cont) env)))]
-           [app-exp (exps)
-                    (eval-expressions exps (proc-cont cont) env)]
-           [global-define-exp (sym body)
-                              (set! *global-env* (cons (cons sym
-                                                             (eval-expression body
-                                                                              cont
-                                                                              env
-                                                                              ))
-                                                       *global-env*))]
            [while-exp (test-exp bodies)
                       (let loop [[test (eval-expression test-exp cont env)]]
                         (if test
@@ -77,6 +75,8 @@
                                                                   (eval-expression body cont env))
                                                             *global-env*)))
                               (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
+           [app-exp (exps)
+                    (eval-expressions exps (proc-cont cont) env)]
            [else (eopl:error 'eval-expression "Evaluation error with: ~s" expr)])))
 
 (define make-closure
@@ -84,74 +84,70 @@
     (closure formals bodies env)))
 
 (define apply-primitive-proc
-  (lambda (id args)
+  (lambda (id args cont)
     (case id
-      [(+)     (apply +     args)]
-      [(-)     (apply -     args)]
-      [(*)     (apply *     args)]
-      [(/)     (apply /     args)]
-      [(add1)  (apply add1  args)]
-      [(sub1)  (apply sub1  args)]
-      [(zero?) (apply zero? args)]
-      [(not)   (apply not   args)]
-      [(=)     (apply =     args)]
-      [(<)     (apply <     args)]
-      [(<=)    (apply <=    args)]
-      [(>)     (apply >     args)]
-      [(>=)    (apply >=    args)]
+      [(+)     (apply-cont cont (apply +     args))]
+      [(-)     (apply-cont cont (apply -     args))]
+      [(*)     (apply-cont cont (apply *     args))]
+      [(/)     (apply-cont cont (apply /     args))]
+      [(add1)  (apply-cont cont (apply add1  args))]
+      [(sub1)  (apply-cont cont (apply sub1  args))]
+      [(zero?) (apply-cont cont (apply zero? args))]
+      [(not)   (apply-cont cont (apply not   args))]
+      [(=)     (apply-cont cont (apply =     args))]
+      [(<)     (apply-cont cont (apply <     args))]
+      [(<=)    (apply-cont cont (apply <=    args))]
+      [(>)     (apply-cont cont (apply >     args))]
+      [(>=)    (apply-cont cont (apply >=    args))]
 
-      [(cons)         (apply cons         args)]
-      [(car)          (apply car          args)]
-      [(cdr)          (apply cdr          args)]
-      [(list)         (apply list         args)]
-      [(null?)        (apply null?        args)]
-      [(eq?)          (apply eq?          args)]
-      [(equal?)       (apply equal?       args)]
-      [(atom?)        (apply atom?        args)]
-      [(length)       (apply length       args)]
-      [(list->vector) (apply list->vector args)]
-      [(list?)        (apply list?        args)]
-      [(pair?)        (apply pair?        args)]
-      [(procedure?)   (apply procedure?   args)]
-      [(vector->list) (apply vector->list args)]
-      [(vector)       (apply vector       args)]
-      [(make-vector)  (apply make-vector  args)]
-      [(vector-ref)   (apply vector-ref   args)]
-      [(vector?)      (apply vector?      args)]
-      [(number?)      (apply number?      args)]
-      [(symbol?)      (apply symbol?      args)]
-      [(set-car!)     (apply set-car!     args)]
-      [(set-cdr!)     (apply set-cdr!     args)]
-      [(vector-set!)  (apply vector-set!  args)]
+      [(cons)         (apply-cont cont (apply cons         args))]
+      [(car)          (apply-cont cont (apply car          args))]
+      [(cdr)          (apply-cont cont (apply cdr          args))]
+      [(list)         (apply-cont cont (apply list         args))]
+      [(null?)        (apply-cont cont (apply null?        args))]
+      [(eq?)          (apply-cont cont (apply eq?          args))]
+      [(equal?)       (apply-cont cont (apply equal?       args))]
+      [(atom?)        (apply-cont cont (apply atom?        args))]
+      [(length)       (apply-cont cont (apply length       args))]
+      [(list->vector) (apply-cont cont (apply list->vector args))]
+      [(list?)        (apply-cont cont (apply list?        args))]
+      [(pair?)        (apply-cont cont (apply pair?        args))]
+      [(procedure?)   (apply-cont cont (apply procedure?   args))]
+      [(vector->list) (apply-cont cont (apply vector->list args))]
+      [(vector)       (apply-cont cont (apply vector       args))]
+      [(make-vector)  (apply-cont cont (apply make-vector  args))]
+      [(vector-ref)   (apply-cont cont (apply vector-ref   args))]
+      [(vector?)      (apply-cont cont (apply vector?      args))]
+      [(number?)      (apply-cont cont (apply number?      args))]
+      [(symbol?)      (apply-cont cont (apply symbol?      args))]
+      [(set-car!)     (apply-cont cont (apply set-car!     args))]
+      [(set-cdr!)     (apply-cont cont (apply set-cdr!     args))]
+      [(vector-set!)  (apply-cont cont (apply vector-set!  args))]
 
-      [(cadr)  (apply cadr  args)]
-      [(caar)  (apply caar  args)]
-      [(cddr)  (apply cddr  args)]
-      [(cdar)  (apply cdar  args)]
-      [(cadar) (apply cadar args)]
-      [(caddr) (apply caddr args)]
-      [(caaar) (apply caaar args)]
-      [(caadr) (apply caadr args)]
-      [(cddar) (apply cddar args)]
-      [(cdddr) (apply cdddr args)]
-      [(cdaar) (apply cdaar args)]
-      [(cdadr) (apply cdadr args)]
-      [(exit)  (apply exit  args)]
+      [(cadr)  (apply-cont cont (apply cadr  args))]
+      [(caar)  (apply-cont cont (apply caar  args))]
+      [(cddr)  (apply-cont cont (apply cddr  args))]
+      [(cdar)  (apply-cont cont (apply cdar  args))]
+      [(cadar) (apply-cont cont (apply cadar args))]
+      [(caddr) (apply-cont cont (apply caddr args))]
+      [(caaar) (apply-cont cont (apply caaar args))]
+      [(caadr) (apply-cont cont (apply caadr args))]
+      [(cddar) (apply-cont cont (apply cddar args))]
+      [(cdddr) (apply-cont cont (apply cdddr args))]
+      [(cdaar) (apply-cont cont (apply cdaar args))]
+      [(cdadr) (apply-cont cont (apply cdadr args))]
+      [(exit)  (apply-cont cont (apply exit  args))]
 
-      [(map)    (apply map (cons (lambda arg (apply-proc (car args) arg)) (cdr args)))]
-      [(apply)  (apply-proc (car args) (cadr args))]
-      [(assq)   (apply assq   args)]
-      [(assv)   (apply assv   args)]
-      [(append) (apply append args)]
-      [(member) (apply member args)]
-      [(nil)    (apply nil args)]
-      [(max)    (apply max args)]
-      [(display) (apply display args)]
-      [(load)   (load-file (car args))]
-
-      [(printf) (apply printf args)]
-      [(pretty-print) (apply pretty-print args)]
-      [(break) (apply break args)]
+      [(map)    (apply-cont cont (apply map (cons (lambda arg (apply-proc (car args) arg cont)) (cdr args))))]
+      [(apply)  (apply-proc (car args) (cadr args) cont)]
+      [(assq)    (apply-cont cont (apply assq      args))]
+      [(assv)    (apply-cont cont (apply assv      args))]
+      [(append)  (apply-cont cont (apply append    args))]
+      [(member)  (apply-cont cont (apply member    args))]
+      [(nil)     (apply-cont cont (apply nil       args))]
+      [(max)     (apply-cont cont (apply max       args))]
+      [(display) (apply-cont cont (apply display   args))]
+      [(load)    (apply-cont cont (load-file (car args)))]
 
       [else (eopl:error 'apply-primitive-proc "invalid primitive ~s" id)])))
 
@@ -216,9 +212,6 @@
     max
     display
     load
-    printf
-    pretty-print
-    break
     ))
 
 (define *global-env*
@@ -232,7 +225,7 @@
   (lambda (proc args cont)
     (if (procedure? proc)
       (cases procedure proc
-             [primitive (id) (apply-cont cont (apply-primitive-proc id args))]
+             [primitive (id) (apply-cont cont (apply-primitive-proc id args cont))]
              [closure (frmls bodies env)
                       (cases formals frmls
                              [unary (param)
