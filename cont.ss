@@ -32,6 +32,11 @@
 				   (cont continuation?))
 				 (define-cont
 				   (sym symbol?)
+				   (cont continuation?))
+				 (set-local-cont
+				   (depth number?)
+				   (position number?)
+				   (env scheme-value?)
 				   (cont continuation?)))
 
 
@@ -67,4 +72,10 @@
 		   [define-cont (sym cont)
 					(set! *global-env* (cons (cons sym val) *global-env*))
 					(apply-cont cont (void))]
+		   [set-local-cont (depth position env cont)
+					(apply-cont cont (set-car! (list-tail
+									(car
+                                     (list-tail (cadr env) depth))
+                                      position)
+									   val))]
 		   )))
