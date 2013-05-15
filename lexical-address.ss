@@ -77,5 +77,6 @@
                                         (if found
                                           (cdr found)
                                           (free-variable name)))
-                                      (L value env))]))))
+                                      (L value env))]
+                  [else expr]))))
     (L expr '()))))
