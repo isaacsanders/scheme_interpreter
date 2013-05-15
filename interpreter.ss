@@ -4,8 +4,8 @@
 (load "cont.ss")
 
 (define eval-one-exp
-  (lambda (exp)
-    (let* ([parse-tree (lexical-address (syntax-expand (parse-top-expression exp)))]
+  (lambda (expr)
+    (let* ([parse-tree (lexical-address (syntax-expand (parse-top-expression expr)))]
            [initial-environment (list)]
            [cont (halt-cont)]
            [result (eval-expression parse-tree cont initial-environment)])
@@ -42,14 +42,15 @@
            [global-define-exp (sym body)
                               (set! *global-env* (cons (cons sym
                                                              (eval-expression body
+                                                                              cont
                                                                               env
                                                                               ))
                                                        *global-env*))]
            [while-exp (test-exp bodies)
-                      (let loop [[test (eval-expression test-exp env)]]
+                      (let loop [[test (eval-expression test-exp cont env)]]
                         (if test
-                          (begin (eval-expression (begin-exp bodies) env)
-                                 (loop (eval-expression test-exp env)))))]
+                          (begin (eval-expression (begin-exp bodies) cont env)
+                                 (loop (eval-expression test-exp cont env)))))]
            [set!-exp (variable value)
                      (cases expression variable
                             (lexical-addressed-variable (depth position)
@@ -57,10 +58,10 @@
                                                                     (car
                                                                       (list-tail (cadr env) depth))
                                                                     position)
-                                                                  (eval-expression value env)))
+                                                                  (eval-expression value cont env)))
                             (free-variable (name) (set! *global-env*
                                                     (cons (cons name
-                                                                (eval-expression value env))
+                                                                (eval-expression value cont env))
                                                           *global-env*)))
                             (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [define-exp (sym body)
@@ -70,18 +71,13 @@
                                                                       (car
                                                                         (list-tail (cadr env) depth))
                                                                       position)
-                                                                    (eval-expression body env)))
+                                                                    (eval-expression body cont env)))
                               (free-variable (name) (set! *global-env*
                                                       (cons (cons name
-                                                                  (eval-expression body env))
+                                                                  (eval-expression body cont env))
                                                             *global-env*)))
                               (else (eopl:error 'eval-expression "Error in set! expression: ~s" expr)))]
            [else (eopl:error 'eval-expression "Evaluation error with: ~s" expr)])))
-
-(define eval-expression-env
-  (lambda (env)
-    (lambda (expr)
-      (eval-expression expr env))))
 
 (define make-closure
   (lambda (formals bodies env)

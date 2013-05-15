@@ -29,7 +29,6 @@
 ;                                  | (<variable> <variable>* . <variable>)
 ; <application>                  ::= (<expression> <expression>*)
 (load "chez-init.ss")
-(load "datatype.ss")
 (load "parser.ss")
 (load "syntax-expand.ss")
 (load "cont.ss")
@@ -40,6 +39,9 @@
 (define rep
   (lambda ()
     (display "--> ")
-    ((compose eval-expression lexical-address syntax-expand parse-top-expression read))
-    (rep-cont)
-    (list)))
+    (eval-expression ((compose lexical-address
+                               syntax-expand
+                               parse-top-expression)
+                      (read))
+                     (rep-cont)
+                     (list))))
