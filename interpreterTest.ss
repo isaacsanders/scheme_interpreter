@@ -91,12 +91,6 @@
     (closure formals bodies env)))
 
 (define apply-primitive-proc
-	(lambda (id args)
-		(case id
-			[(+) (apply + args)]
-			[(*) (apply * args)])))
-
-(define apply-primitive-procasca
   (lambda (id args cont)
     (case id
       [(+)     (apply-cont cont (apply +     args))]
@@ -238,7 +232,7 @@
   (lambda (proc args cont)
     (if (procedure? proc)
       (cases procedure proc
-             [primitive (id) (apply-cont cont (apply-primitive-proc id args))]
+             [primitive (id) (apply-cont cont (apply-primitive-proc id args cont))]
              [closure (frmls bodies env)
                       (cases formals frmls
                              [unary (param)
