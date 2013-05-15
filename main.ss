@@ -28,50 +28,18 @@
 ;                                  | (<variable>*)
 ;                                  | (<variable> <variable>* . <variable>)
 ; <application>                  ::= (<expression> <expression>*)
-
-(load "interpreter.ss")
+(load "chez-init.ss")
+(load "datatype.ss")
+(load "parser.ss")
+(load "syntax-expand.ss")
 (load "cont.ss")
-(load "functional-utils.ss")
+(load "interpreter.ss")
 
 (define (rl) (load "main.ss"))
 
-;(define (rep)
-;  (begin
-;    (display "--> ")
-;    (write (eval-expression
-;             (lexical-address
-;               (syntax-expand
-;                 (parse-top-expression
-;                   (read))))
-;             (lexically-addressed-environment (list))))
-;    (newline)
-;    (rep)))
-	
 (define rep
-	(lambda ()
-		(display "--> ")
-			(eval-expression
-				(lexical-address
-					(syntax-expand
-					(parse-top-expression
-						(read))))
-					(rep-cont)
-				(lexically-addressed-environment (list)))))
-
-(define-syntax return-first
-  (syntax-rules ()
-    [(_) '()]
-    [(_ e) e]
-    [(_ e1 e2 e3 ...)
-      (let ([a e1])
-        (begin e2 e3 ... a))]))
-
-(define-syntax for
-  (syntax-rules ()
-    [(_ (e1 _ e2 _ e3) e4)
-      (begin e1
-        (letrec ([helper
-          (lambda ()
-            (if e2
-              (begin e4 e3 (helper))))])
-            (helper)))]))
+  (lambda ()
+    (display "--> ")
+    ((compose eval-expression lexical-address syntax-expand parse-top-expression read))
+    (rep-cont)
+    (list)))
