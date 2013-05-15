@@ -25,19 +25,19 @@
                    (expr expression?)
                    (env scheme-value?)
                    (cont continuation?))
-				 (while-cont
-				   (test-exp expression?)
-				   (bodies (list-of expression?))
-				   (env scheme-value?)
-				   (cont continuation?))
-				 (define-cont
-				   (sym symbol?)
-				   (cont continuation?))
-				 (set-local-cont
-				   (depth number?)
-				   (position number?)
-				   (env scheme-value?)
-				   (cont continuation?)))
+                 (while-cont
+                   (test-exp expression?)
+                   (bodies (list-of expression?))
+                   (env scheme-value?)
+                   (cont continuation?))
+                 (define-cont
+                   (sym symbol?)
+                   (cont continuation?))
+                 (set-local-cont
+                   (depth number?)
+                   (position number?)
+                   (env scheme-value?)
+                   (cont continuation?)))
 
 
 (define scheme-value?
@@ -65,17 +65,16 @@
            [if-else-cont (if-true-exp if-false-exp next-cont env)
                          (let [[expr (if val if-true-exp if-false-exp)]]
                            (eval-expression expr next-cont env))]
-		   [while-cont (test-exp bodies env cont)
-					(if val
-						(eval-expression (begin-exp bodies) (while-cont test-exp bodies env cont) env)
-						(apply-cont cont (void)))]
-		   [define-cont (sym cont)
-					(set! *global-env* (cons (cons sym val) *global-env*))
-					(apply-cont cont (void))]
-		   [set-local-cont (depth position env cont)
-					(apply-cont cont (set-car! (list-tail
-									(car
-                                     (list-tail (cadr env) depth))
-                                      position)
-									   val))]
-		   )))
+           [while-cont (test-exp bodies env cont)
+                       (if val
+                         (eval-expression (begin-exp bodies) (while-cont test-exp bodies env cont) env)
+                         (apply-cont cont (void)))]
+           [define-cont (sym cont)
+                        (set! *global-env* (cons (cons sym val) *global-env*))
+                        (apply-cont cont (void))]
+           [set-local-cont (depth position env cont)
+                           (apply-cont cont (set-car! (list-tail
+                                                        (car
+                                                          (list-tail (cadr env) depth))
+                                                        position)
+                                                      val))])))
