@@ -71,6 +71,8 @@
                              (app-exp args))]
                   [global-define-exp (name value)
                                      (global-define-exp name (L value env))]
+                  [call/cc-exp (receiver)
+                               (call/cc-exp (L receiver env))]
                   [set!-exp (variable value)
                             (set!-exp (let* [[name (cadr variable)]
                                              [found (assq name env)]]

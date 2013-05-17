@@ -40,6 +40,8 @@
                    (value constant?))
                  (quote-exp
                    (datum quoteable?))
+                 (call/cc-exp
+                   (receiver expression?))
                  (lambda-exp
                    (formals formals?)
                    (bodies (list-of expression?)))
@@ -256,6 +258,7 @@
              [(eq? (car datum) 'letrec) (parse-letrec datum)]
              [(eq? (car datum) 'set!)   (parse-set! datum)]
              [(eq? (car datum) 'begin) (begin-exp (map parse-expression (cdr datum)))]
+             [(eq? (car datum) 'call/cc) (call/cc-exp (parse-expression (cadr datum)))]
              [(and (pair? (car datum))
                    (eq? (caar datum) 'quote)) (quote-exp (car datum))]
              [else (app-exp (map parse-expression datum))])]

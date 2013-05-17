@@ -1,4 +1,3 @@
-(load "chez-init.ss")
 
 (define (scheme-value? x) #t)
 
@@ -15,14 +14,6 @@
     (cases environment env
            [lexically-addressed-environment (env)
                                             (lexically-addressed-environment (cons vals env))])))
-
-(define-datatype procedure procedure?
-                 [primitive
-                   (id symbol?)]
-                 [closure
-                   (formals formals?)
-                   (bodies (list-of expression?))
-                   (env environment?)])
 
 (define apply-env
   (lambda (env depth position)

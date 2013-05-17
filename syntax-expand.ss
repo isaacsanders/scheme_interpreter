@@ -128,6 +128,7 @@
            (vector-exp (datum)                        (vector-exp (map syntax-expand datum)))
            (define-exp (sym body)                     (define-exp sym (syntax-expand body)))
            (set!-exp (variable value)                 (set!-exp variable (syntax-expand value)))
+           (call/cc-exp (receiver)                    (call/cc-exp (syntax-expand receiver)))
            (global-define-exp (sym body) (global-define-exp sym (syntax-expand body)))
            (define-to-expand-exp (names values following-bodies) (syntax-expand (letrec-exp names values following-bodies)))
            (let-exp (syms vals bodies)            (syntax-expand (expand-let-exp syms vals bodies)))

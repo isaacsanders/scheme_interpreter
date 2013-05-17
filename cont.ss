@@ -30,6 +30,8 @@
                    (bodies (list-of expression?))
                    (env scheme-value?)
                    (cont continuation?))
+                 (call/cc-cont
+                   (cont continuation?))
                  (define-cont
                    (sym symbol?)
                    (cont continuation?))
@@ -37,6 +39,10 @@
                    (depth number?)
                    (position number?)
                    (env scheme-value?)
+                   (cont continuation?))
+                 (map-cont
+                   (proc proc?)
+                   (args (list-of scheme-value?))
                    (cont continuation?))
                  (test-while-cont
                    (test-exp expression?)
@@ -66,11 +72,20 @@
            [if-cont (if-true-exp next-cont env)
                     (if val
                       (eval-expression if-true-exp next-cont env))]
+           [call/cc-cont (cont)
+                         (cases proc val
+                                [closure (ids bodies env)
+                                         (eval-expression (begin-exp bodies)
+                                                           cont
+                                                           (extend-env (list (acontinuation cont)) env))]
+                                [else (eopl:error 'call/cc "Invalid receiver: ~s" val)])]
            [if-else-cont (if-true-exp if-false-exp next-cont env)
                          (let [[expr (if val if-true-exp if-false-exp)]]
                            (eval-expression expr next-cont env))]
-		   [test-while-cont (test-exp env cont)
-					(eval-expression test-exp cont env)]
+           [map-cont (proc args cont)
+                     (apply-cont cont (cons (apply-proc proc args (halt-cont)) val))]
+           [test-while-cont (test-exp env cont)
+                        (eval-expression test-exp cont env)]
            [while-cont (test-exp bodies env cont)
                        (if val
                          (eval-expression (begin-exp bodies) (test-while-cont test-exp env (while-cont test-exp bodies env cont)) env)

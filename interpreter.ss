@@ -3,6 +3,16 @@
 (load "syntax-expand.ss")
 (load "cont.ss")
 
+(define-datatype proc proc?
+                 [primitive
+                   (id symbol?)]
+                 [acontinuation
+                   (cont continuation?)]
+                 [closure
+                   (formals formals?)
+                   (bodies (list-of expression?))
+                   (env environment?)])
+
 (define eval-one-exp
   (lambda (expr)
     (let* ([parse-tree (lexical-address (syntax-expand (parse-expression expr)))]
@@ -24,6 +34,8 @@
                                       [string-literal    (val) (apply-cont cont val)]
                                       [number-literal    (val) (apply-cont cont val)])]
            [quote-exp (datum) (apply-cont cont datum)]
+           [call/cc-exp (receiver)
+                        (eval-expression receiver (call/cc-cont cont) env)]
            [global-define-exp (sym body)
                               (set! *global-env* (cons (cons sym
                                                              (eval-expression body
@@ -123,7 +135,12 @@
       [(cdadr) (apply-cont cont (apply cdadr args))]
       [(exit)  (apply-cont cont (apply exit  args))]
 
-      [(map)    (apply map (cons (lambda arg (apply-proc (car args) arg cont)) (cdr args)))]
+      [(map)    (let mapper [[proc (car args)]
+                             [ls (cdr args)]
+                             [cont cont]]
+                  (if (ormap null? ls)
+                    (apply-cont cont (list))
+                    (mapper proc (map cdr ls) (map-cont proc (map car ls) cont))))]
       [(apply)  (apply-proc (car args) (cadr args) cont)]
       [(assq)    (apply-cont cont (apply assq      args))]
       [(assv)    (apply-cont cont (apply assv      args))]
@@ -209,10 +226,12 @@
     (set! *global-env* (map cons primitives (map primitive primitives)))))
 
 (define apply-proc
-  (lambda (proc args cont)
-    (if (procedure? proc)
-      (cases procedure proc
+  (lambda (procedure args cont)
+    (if (proc? procedure)
+      (cases proc procedure
              [primitive (id) (apply-primitive-proc id args cont)]
+             [acontinuation (cont)
+                            (apply-cont cont (car args))]
              [closure (frmls bodies env)
                       (cases formals frmls
                              [unary (param)
@@ -233,7 +252,7 @@
                                                                  (list-head args (length params))
                                                                  (list (list-tail args (length params))))
                                                                env))])])
-      (proc args))))
+      (procedure args))))
 
 (define eval-expressions
   (lambda (exps cont env)
